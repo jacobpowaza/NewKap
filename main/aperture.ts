@@ -15,7 +15,8 @@ import {RecordService, RecordServiceHook} from './plugins/service';
 import {getCurrentDurationStart, getOverallDuration, setCurrentDurationStart, setOverallDuration} from './utils/track-duration';
 
 const createAperture = require('aperture');
-const aperture = createAperture();
+let aperture = createAperture();
+const MAX_RECORDING_RETRIES = 2;
 
 let recordingPlugins: Array<{plugin: InstalledPlugin; service: RecordService}> = [];
 const serviceState = new Map<string, RecordServiceState>();
@@ -137,20 +138,36 @@ export const startRecording = async (options: StartRecordingOptions) => {
 
   await callPlugins('willStartRecording');
 
-  try {
-    const filePath = await aperture.startRecording(apertureOptions);
-    setOverallDuration(0);
-    setCurrentDurationStart(Date.now());
+  // Retry logic for aperture timeout on macOS Sonoma+
+  let lastError: any;
+  for (let attempt = 1; attempt <= MAX_RECORDING_RETRIES; attempt++) {
+    try {
+      const filePath = await aperture.startRecording(apertureOptions);
+      setOverallDuration(0);
+      setCurrentDurationStart(Date.now());
 
-    setCurrentRecording({
-      filePath,
-      name: recordingName,
-      apertureOptions,
-      plugins: serializeEditPluginState()
-    });
-  } catch (error) {
+      setCurrentRecording({
+        filePath,
+        name: recordingName,
+        apertureOptions,
+        plugins: serializeEditPluginState()
+      });
+      lastError = undefined;
+      break;
+    } catch (error: any) {
+      lastError = error;
+      if (error?.code === 'RECORDER_TIMEOUT' && attempt < MAX_RECORDING_RETRIES) {
+        console.log(`Recording attempt ${attempt} timed out, retrying...`);
+        // Reset aperture instance for retry
+        aperture = createAperture();
+        continue;
+      }
+    }
+  }
+
+  if (lastError) {
     track('recording/stopped/error');
-    showError(error as any, {title: 'Recording error', plugin: undefined});
+    showError(lastError as any, {title: 'Recording error', plugin: undefined});
     past = undefined;
     cleanup();
     return;
@@ -232,12 +249,15 @@ export const stopRecordingWithNoEdit = async () => {
   past = undefined;
 
   try {
-    await aperture.stopRecording();
+    // Add timeout to prevent hanging on quit
+    await Promise.race([
+      aperture.stopRecording(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Stop recording timed out')), 5000))
+    ]);
     setOverallDuration(0);
     setCurrentDurationStart(0);
   } catch (error) {
-    track('recording/quit/error');
-    showError(error as any, {title: 'Recording error', plugin: undefined});
+    console.error('Error stopping recording:', error);
     cleanup();
     return;
   }
@@ -251,13 +271,16 @@ export const stopRecordingWithNoEdit = async () => {
 };
 
 export const pauseRecording = async () => {
-  // Ensure we only pause if there's a recording in progress and if it's currently not paused
-  const isPaused = await aperture.isPaused();
-  if (!past || isPaused) {
+  if (!past) {
     return;
   }
 
   try {
+    const isPaused = await aperture.isPaused();
+    if (isPaused) {
+      return;
+    }
+
     await aperture.pause();
     setOverallDuration(getOverallDuration() + (Date.now() - getCurrentDurationStart()));
     setCurrentDurationStart(0);
@@ -272,13 +295,16 @@ export const pauseRecording = async () => {
 };
 
 export const resumeRecording = async () => {
-  // Ensure we only resume if there's a recording in progress and if it's currently paused
-  const isPaused = await aperture.isPaused();
-  if (!past || !isPaused) {
+  if (!past) {
     return;
   }
 
   try {
+    const isPaused = await aperture.isPaused();
+    if (!isPaused) {
+      return;
+    }
+
     await aperture.resume();
     setCurrentDurationStart(Date.now());
     setRecordingTray();

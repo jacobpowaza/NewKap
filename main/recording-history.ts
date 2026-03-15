@@ -120,12 +120,22 @@ export const addRecording = (newRecording: PastRecording): PastRecording[] => {
 };
 
 export const cleanPastRecordings = () => {
-  const recordings = getPastRecordings();
-  for (const recording of recordings) {
-    fs.unlinkSync(recording.filePath);
-  }
+  try {
+    const recordings = getPastRecordings();
+    for (const recording of recordings) {
+      try {
+        if (fs.existsSync(recording.filePath)) {
+          fs.unlinkSync(recording.filePath);
+        }
+      } catch (error) {
+        console.error(`Failed to clean recording ${recording.filePath}:`, error);
+      }
+    }
 
-  recordingHistory.set('recordings', []);
+    recordingHistory.set('recordings', []);
+  } catch (error) {
+    console.error('Failed to clean past recordings:', error);
+  }
 };
 
 export const cleanUpRecordingPlugins = (usedPlugins: ActiveRecording['plugins']) => {
