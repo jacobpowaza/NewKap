@@ -167,13 +167,9 @@ app.on('window-all-closed', () => {
         doCheck();
       }, 10000);
 
-      // Enforce app location in background (non-blocking)
-      setTimeout(() => {
-        try {
-          const {enforceMacOSAppLocation} = require('electron-util');
-          enforceMacOSAppLocation();
-        } catch {}
-      }, 3000);
+      // enforceMacOSAppLocation intentionally removed:
+      // Homebrew installs directly to /Applications, so this check is never needed
+      // and showed a confusing "Kap must live in Applications" dialog with wrong branding.
     });
   });
 })();
