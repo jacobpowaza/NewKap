@@ -17,7 +17,10 @@ const MAX_RETRIES = 10;
 const ERRORS_TO_IGNORE = [
   /net::ERR_CONNECTION_TIMED_OUT/,
   /net::ERR_NETWORK_IO_SUSPENDED/,
-  /net::ERR_CONNECTION_CLOSED/
+  /net::ERR_CONNECTION_CLOSED/,
+  /net::ERR_INTERNET_DISCONNECTED/,
+  /net::ERR_NAME_NOT_RESOLVED/,
+  /The operation couldn't be completed/
 ];
 
 const shouldIgnoreError = (errorText: string) => ERRORS_TO_IGNORE.some(regex => regex.test(errorText));

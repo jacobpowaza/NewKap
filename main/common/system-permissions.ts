@@ -1,8 +1,35 @@
 import {systemPreferences, shell, dialog, app} from 'electron';
-const {hasScreenCapturePermission, hasPromptedForPermission} = require('mac-screen-capture-permissions');
 const {ensureDockIsShowing} = require('../utils/dock');
 
+// Safe wrapper for mac-screen-capture-permissions (crashes on some macOS versions)
+let hasScreenCapturePermission: () => boolean;
+let hasPromptedForPermission: () => boolean;
+try {
+  const macPerms = require('mac-screen-capture-permissions');
+  hasScreenCapturePermission = macPerms.hasScreenCapturePermission;
+  hasPromptedForPermission = macPerms.hasPromptedForPermission;
+} catch (error) {
+  console.error('mac-screen-capture-permissions failed to load:', error);
+  hasScreenCapturePermission = () => false;
+  hasPromptedForPermission = () => false;
+}
+
 let isDialogShowing = false;
+
+// Use the correct URL scheme for macOS Sonoma+ (System Settings vs System Preferences)
+const getSystemSettingsUrl = (privacySection: string) => {
+  const majorVersion = Number.parseInt(require('os').release().split('.')[0], 10);
+  // macOS Sonoma (14.x) = Darwin 23.x, uses new System Settings URL scheme
+  if (majorVersion >= 23) {
+    const sectionMap: Record<string, string> = {
+      Privacy_Microphone: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
+      Privacy_ScreenCapture: 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+    };
+    return sectionMap[privacySection] ?? `x-apple.systempreferences:com.apple.preference.security?${privacySection}`;
+  }
+
+  return `x-apple.systempreferences:com.apple.preference.security?${privacySection}`;
+};
 
 const promptSystemPreferences = (options: {message: string; detail: string; systemPreferencesPath: string}) => async ({hasAsked}: {hasAsked?: boolean} = {}) => {
   if (hasAsked || isDialogShowing) {
@@ -13,7 +40,7 @@ const promptSystemPreferences = (options: {message: string; detail: string; syst
   await ensureDockIsShowing(async () => {
     const {response} = await dialog.showMessageBox({
       type: 'warning',
-      buttons: ['Open System Preferences', 'Cancel'],
+      buttons: ['Open System Settings', 'Cancel'],
       defaultId: 0,
       message: options.message,
       detail: options.detail,
@@ -30,7 +57,7 @@ const promptSystemPreferences = (options: {message: string; detail: string; syst
   return false;
 };
 
-export const openSystemPreferences = async (path: string) => shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${path}`);
+export const openSystemPreferences = async (path: string) => shell.openExternal(getSystemSettingsUrl(path));
 
 // Microphone
 
@@ -38,7 +65,7 @@ const getMicrophoneAccess = () => systemPreferences.getMediaAccessStatus('microp
 
 const microphoneFallback = promptSystemPreferences({
   message: 'Kap cannot access the microphone.',
-  detail: 'Kap requires microphone access to be able to record audio. You can grant this in the System Preferences. Afterwards, launch Kap for the changes to take effect.',
+  detail: 'Kap requires microphone access to be able to record audio. You can grant this in System Settings → Privacy & Security → Microphone. Afterwards, relaunch Kap.',
   systemPreferencesPath: 'Privacy_Microphone'
 });
 
@@ -68,22 +95,34 @@ export const hasMicrophoneAccess = () => getMicrophoneAccess() === 'granted';
 
 const screenCaptureFallback = promptSystemPreferences({
   message: 'Kap cannot record the screen.',
-  detail: 'Kap requires screen capture access to be able to record the screen. You can grant this in the System Preferences. Afterwards, launch Kap for the changes to take effect.',
+  detail: 'Kap requires screen capture access to be able to record the screen. You can grant this in System Settings → Privacy & Security → Screen Recording. Afterwards, relaunch Kap.',
   systemPreferencesPath: 'Privacy_ScreenCapture'
 });
 
 export const ensureScreenCapturePermissions = (fallback = screenCaptureFallback) => {
-  const hadAsked = hasPromptedForPermission();
+  try {
+    const hadAsked = hasPromptedForPermission();
+    const hasAccess = hasScreenCapturePermission();
 
-  const hasAccess = hasScreenCapturePermission();
+    if (hasAccess) {
+      return true;
+    }
 
-  if (hasAccess) {
-    return true;
+    fallback({hasAsked: !hadAsked});
+    return false;
+  } catch (error) {
+    console.error('Screen capture permission check failed:', error);
+    // On failure, show the permission prompt rather than silently failing
+    fallback({hasAsked: false});
+    return false;
   }
-
-  fallback({hasAsked: !hadAsked});
-  return false;
 };
 
-export const hasScreenCaptureAccess = () => hasScreenCapturePermission();
+export const hasScreenCaptureAccess = () => {
+  try {
+    return hasScreenCapturePermission();
+  } catch {
+    return false;
+  }
+};
 

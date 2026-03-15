@@ -44,13 +44,13 @@ app.on('open-file', (event, path) => {
   }
 });
 
-const initializePlugins = async () => {
+// Non-blocking plugin upgrade — don't block startup
+const initializePlugins = () => {
   if (!is.development) {
-    try {
-      await plugins.upgrade();
-    } catch (error) {
-      console.log(error);
-    }
+    // Fire and forget — plugin upgrade happens in background
+    plugins.upgrade().catch(error => {
+      console.log('Plugin upgrade failed (non-fatal):', error);
+    });
   }
 };
 
@@ -74,7 +74,8 @@ const checkForUpdates = () => {
 
   setInterval(checkForUpdates, toMilliseconds({hours: 1}));
 
-  checkForUpdates();
+  // Defer first update check so it doesn't block startup
+  setTimeout(checkForUpdates, 5000);
   return true;
 };
 
@@ -96,7 +97,7 @@ const checkForUpdates = () => {
 
   await prepareNext('./renderer');
 
-  // Ensure all plugins are up to date
+  // Non-blocking initializations — don't await these
   initializePlugins();
   initializeDevices();
   initializeAnalytics();
@@ -111,14 +112,25 @@ const checkForUpdates = () => {
   if (filesToOpen.length > 0) {
     track('editor/opened/startup');
     openFiles(...filesToOpen);
-    hasActiveRecording();
-  } else if (
-    !(await hasActiveRecording()) &&
-    !app.getLoginItemSettings().wasOpenedAtLogin &&
-    ensureScreenCapturePermissions() &&
-    (!settings.get('recordAudio') || hasMicrophoneAccess())
-  ) {
-    windowManager.cropper?.open();
+    hasActiveRecording().catch(console.error);
+  } else {
+    // Don't let permission checks block startup — handle async
+    (async () => {
+      try {
+        if (
+          !(await hasActiveRecording()) &&
+          !app.getLoginItemSettings().wasOpenedAtLogin &&
+          ensureScreenCapturePermissions() &&
+          (!settings.get('recordAudio') || hasMicrophoneAccess())
+        ) {
+          windowManager.cropper?.open();
+        }
+      } catch (error) {
+        console.error('Error during startup permission check:', error);
+        // Still try to open cropper even if permission check fails
+        windowManager.cropper?.open();
+      }
+    })();
   }
 
   checkForUpdates();
@@ -136,12 +148,34 @@ app.on('will-finish-launching', () => {
   });
 });
 
-app.on('before-quit', async (event: any) => {
+const QUIT_TIMEOUT_MS = 5000;
+
+app.on('before-quit', (event: any) => {
   if (!onExitCleanupComplete) {
     event.preventDefault();
-    await stopRecordingWithNoEdit();
-    cleanPastRecordings();
-    onExitCleanupComplete = true;
-    app.quit();
+
+    const forceQuit = setTimeout(() => {
+      console.log('Force quitting after timeout');
+      onExitCleanupComplete = true;
+      app.quit();
+    }, QUIT_TIMEOUT_MS);
+
+    (async () => {
+      try {
+        await stopRecordingWithNoEdit();
+      } catch (error) {
+        console.error('Error stopping recording on quit:', error);
+      }
+
+      try {
+        cleanPastRecordings();
+      } catch (error) {
+        console.error('Error cleaning recordings on quit:', error);
+      }
+
+      clearTimeout(forceQuit);
+      onExitCleanupComplete = true;
+      app.quit();
+    })();
   }
 });
