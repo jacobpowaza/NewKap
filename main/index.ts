@@ -5,12 +5,29 @@
 // Phase 3: Open cropper + deferred init (background)
 // ============================================================================
 
-import {app, Tray} from 'electron';
+import {app, Tray, dialog} from 'electron';
 import path from 'path';
 
-// MUST run before any module loads — prevents "Move to Applications folder" dialog
-// by making Electron always think the app is in /Applications.
-(app as any).isInApplicationsFolder = () => true;
+// ── Block "Move to Applications folder" dialog permanently ──────────────────
+// The enforce function from electron-util can be called from both main and
+// renderer (via remote). Intercepting dialog.showMessageBoxSync is the only
+// approach that catches ALL code paths, including remote IPC calls.
+const _origShowMessageBoxSync = dialog.showMessageBoxSync;
+dialog.showMessageBoxSync = function(this: any) {
+  // eslint-disable-next-line prefer-rest-params
+  const args = Array.from(arguments);
+  const opts: any = args.length === 1 ? args[0] : args[1];
+  if (opts?.message?.includes('Move to Applications folder')) {
+    return 1; // Return cancel index — silently blocks the dialog
+  }
+  return _origShowMessageBoxSync.apply(dialog, args as any);
+} as any;
+// Also override isInApplicationsFolder for any direct main-process checks
+Object.defineProperty(app, 'isInApplicationsFolder', {
+  value: () => true,
+  writable: true,
+  configurable: true,
+});
 
 const filesToOpen: string[] = [];
 let onExitCleanupComplete = false;
