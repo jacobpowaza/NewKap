@@ -136,9 +136,9 @@ const checkForUpdates = () => {
   checkForUpdates();
 })();
 
-app.on('window-all-closed', (event: any) => {
+app.on('window-all-closed', () => {
   app.dock.hide();
-  event.preventDefault();
+  // Don't quit — Kap is a tray app that lives in the menu bar
 });
 
 app.on('will-finish-launching', () => {
@@ -150,6 +150,20 @@ app.on('will-finish-launching', () => {
 
 const QUIT_TIMEOUT_MS = 5000;
 
+const performQuitCleanup = async () => {
+  try {
+    await stopRecordingWithNoEdit();
+  } catch (error) {
+    console.error('Error stopping recording on quit:', error);
+  }
+
+  try {
+    cleanPastRecordings();
+  } catch (error) {
+    console.error('Error cleaning recordings on quit:', error);
+  }
+};
+
 app.on('before-quit', (event: any) => {
   if (!onExitCleanupComplete) {
     event.preventDefault();
@@ -157,25 +171,22 @@ app.on('before-quit', (event: any) => {
     const forceQuit = setTimeout(() => {
       console.log('Force quitting after timeout');
       onExitCleanupComplete = true;
-      app.quit();
+      app.exit(0);
     }, QUIT_TIMEOUT_MS);
 
-    (async () => {
-      try {
-        await stopRecordingWithNoEdit();
-      } catch (error) {
-        console.error('Error stopping recording on quit:', error);
-      }
-
-      try {
-        cleanPastRecordings();
-      } catch (error) {
-        console.error('Error cleaning recordings on quit:', error);
-      }
-
+    performQuitCleanup().finally(() => {
       clearTimeout(forceQuit);
       onExitCleanupComplete = true;
       app.quit();
-    })();
+    });
   }
 });
+
+// Handle terminal signals gracefully
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(signal, () => {
+    console.log(`Received ${signal}, quitting...`);
+    onExitCleanupComplete = true;
+    app.exit(0);
+  });
+}
