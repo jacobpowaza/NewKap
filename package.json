@@ -1,15 +1,15 @@
 {
-  "name": "kap",
-  "productName": "Kap",
-  "version": "3.6.0",
-  "description": "An open-source screen recorder built with web technology",
+  "name": "newkap",
+  "productName": "NewKap",
+  "version": "4.0.0",
+  "description": "Community-driven Kap fork focused on reliability and community maintenance",
   "license": "MIT",
-  "repository": "wulkano/kap",
-  "homepage": "https://getkap.co",
+  "repository": "MuntasirMalek/NewKap",
+  "homepage": "https://github.com/MuntasirMalek/NewKap",
   "author": {
-    "name": "Wulkano",
-    "email": "hello@wulkano.com",
-    "url": "https://wulkano.com"
+    "name": "NewKap Community",
+    "email": "muntasirmalek@users.noreply.github.com",
+    "url": "https://github.com/MuntasirMalek/NewKap"
   },
   "private": true,
   "main": "dist-js/index.js",
@@ -242,7 +242,7 @@
     }
   },
   "build": {
-    "appId": "com.wulkano.kap",
+    "appId": "com.newkap.app",
     "afterSign": "electron-builder-notarize",
     "protocols": {
       "name": "kap",
