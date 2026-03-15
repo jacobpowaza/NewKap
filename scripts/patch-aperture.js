@@ -32,3 +32,11 @@ if (patched) {
 } else {
   console.log('✅ Aperture already patched or timeout not found');
 }
+
+// Patch electron-util: disable enforceMacOSAppLocation (unreliable, wrong branding)
+const enforcePath = path.join(__dirname, '..', 'node_modules', 'electron-util', 'source', 'enforce-macos-app-location.js');
+if (fs.existsSync(enforcePath)) {
+  const noopContent = `'use strict';\n// Patched by NewKap: disabled — unreliable and shows wrong branding.\nmodule.exports = () => {};\n`;
+  fs.writeFileSync(enforcePath, noopContent);
+  console.log('✅ Patched electron-util: enforceMacOSAppLocation disabled');
+}
