@@ -1,17 +1,28 @@
 import {systemPreferences, shell, dialog, app} from 'electron';
 const {ensureDockIsShowing} = require('../utils/dock');
 
-// Safe wrapper for mac-screen-capture-permissions (crashes on some macOS versions)
+// Safe wrapper for mac-screen-capture-permissions (unreliable on macOS Sonoma+)
 let hasScreenCapturePermission: () => boolean;
 let hasPromptedForPermission: () => boolean;
-try {
-  const macPerms = require('mac-screen-capture-permissions');
-  hasScreenCapturePermission = macPerms.hasScreenCapturePermission;
-  hasPromptedForPermission = macPerms.hasPromptedForPermission;
-} catch (error) {
-  console.error('mac-screen-capture-permissions failed to load:', error);
-  hasScreenCapturePermission = () => false;
-  hasPromptedForPermission = () => false;
+
+const darwinMajor = Number.parseInt(require('os').release().split('.')[0], 10);
+const isSonomaOrNewer = darwinMajor >= 23;
+
+if (isSonomaOrNewer) {
+  // On Sonoma+, mac-screen-capture-permissions is unreliable — always returns false
+  // even when permission is granted. Skip the check and let aperture handle it.
+  hasScreenCapturePermission = () => true;
+  hasPromptedForPermission = () => true;
+} else {
+  try {
+    const macPerms = require('mac-screen-capture-permissions');
+    hasScreenCapturePermission = macPerms.hasScreenCapturePermission;
+    hasPromptedForPermission = macPerms.hasPromptedForPermission;
+  } catch (error) {
+    console.error('mac-screen-capture-permissions failed to load:', error);
+    hasScreenCapturePermission = () => true;
+    hasPromptedForPermission = () => true;
+  }
 }
 
 let isDialogShowing = false;
