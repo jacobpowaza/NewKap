@@ -1,5 +1,4 @@
 <p align="center">
-  <img src="static/icon.png" height="140">
   <h1 align="center">NewKap</h1>
   <p align="center"><strong>Community-driven Kap fork focused on reliability and community maintenance</strong></p>
   <p align="center">An open-source screen recorder built with web technology</p>
@@ -11,6 +10,12 @@
 
     brew tap MuntasirMalek/newkap
     brew install --cask newkap
+
+Automatically installs the right version for your Mac (Intel or Apple Silicon).
+
+### Uninstall (clean, removes all app data)
+
+    brew uninstall --zap --cask newkap
 
 Or download the `.dmg` directly from [Releases](https://github.com/MuntasirMalek/NewKap/releases/latest).
 
