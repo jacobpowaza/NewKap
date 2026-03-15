@@ -27,8 +27,13 @@ const openPausedContextMenu = async () => {
 
 const openCropperWindow = () => windowManager.cropper?.open();
 
-export const initializeTray = () => {
-  tray = new Tray(path.join(__dirname, '..', 'static', 'menubarDefaultTemplate.png'));
+export const initializeTray = (existingTray?: Tray) => {
+  if (existingTray) {
+    tray = existingTray;
+  } else {
+    tray = new Tray(path.join(__dirname, '..', 'static', 'menubarDefaultTemplate.png'));
+  }
+
   tray.on('click', openCropperWindow);
   tray.on('right-click', openContextMenu);
   tray.on('drop-files', (_, files) => {

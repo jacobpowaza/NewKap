@@ -1,163 +1,197 @@
-import {app} from 'electron';
-import {is, enforceMacOSAppLocation} from 'electron-util';
-import log from 'electron-log';
-import {autoUpdater} from 'electron-updater';
-import toMilliseconds from '@sindresorhus/to-milliseconds';
+// ============================================================================
+// NewKap — Fast Phased Startup
+// Phase 1: Show tray icon immediately (< 500ms)
+// Phase 2: Load renderer + window modules (background)
+// Phase 3: Open cropper + deferred init (background)
+// ============================================================================
 
-import './windows/load';
-import './utils/sentry';
-
-require('electron-timber').hookConsole({main: true, renderer: true});
-
-import {settings} from './common/settings';
-import {plugins} from './plugins';
-import {initializeTray} from './tray';
-import {initializeDevices} from './utils/devices';
-import {initializeAnalytics, track} from './common/analytics';
-import {initializeGlobalAccelerators} from './global-accelerators';
-import {openFiles} from './utils/open-files';
-import {hasMicrophoneAccess, ensureScreenCapturePermissions} from './common/system-permissions';
-import {handleDeepLink} from './utils/deep-linking';
-import {hasActiveRecording, cleanPastRecordings} from './recording-history';
-import {setupRemoteStates} from './remote-states';
-import {setUpExportsListeners} from './export';
-import {windowManager} from './windows/manager';
-import {setupProtocol} from './utils/protocol';
-import {stopRecordingWithNoEdit} from './aperture';
-
-const prepareNext = require('electron-next');
+import {app, Tray} from 'electron';
+import path from 'path';
 
 const filesToOpen: string[] = [];
-
 let onExitCleanupComplete = false;
 
 app.commandLine.appendSwitch('--enable-features', 'OverlayScrollbar');
 
-app.on('open-file', (event, path) => {
+app.on('open-file', (event, filePath) => {
   event.preventDefault();
 
   if (app.isReady()) {
-    track('editor/opened/running');
-    openFiles(path);
+    require('./common/analytics').track('editor/opened/running');
+    require('./utils/open-files').openFiles(filePath);
   } else {
-    filesToOpen.push(path);
+    filesToOpen.push(filePath);
   }
-});
-
-// Non-blocking plugin upgrade — don't block startup
-const initializePlugins = () => {
-  if (!is.development) {
-    // Fire and forget — plugin upgrade happens in background
-    plugins.upgrade().catch(error => {
-      console.log('Plugin upgrade failed (non-fatal):', error);
-    });
-  }
-};
-
-const checkForUpdates = () => {
-  if (is.development) {
-    return false;
-  }
-
-  const checkForUpdates = async () => {
-    try {
-      await autoUpdater.checkForUpdates();
-    } catch (error) {
-      autoUpdater.logger?.error(error);
-    }
-  };
-
-  // For auto-update debugging in Console.app
-  autoUpdater.logger = log;
-  // @ts-expect-error
-  autoUpdater.logger.transports.file.level = 'info';
-
-  setInterval(checkForUpdates, toMilliseconds({hours: 1}));
-
-  // Defer first update check so it doesn't block startup
-  setTimeout(checkForUpdates, 5000);
-  return true;
-};
-
-// Prepare the renderer once the app is ready
-(async () => {
-  await app.whenReady();
-  require('./utils/errors').setupErrorHandling();
-
-  // Initialize remote states
-  setupRemoteStates();
-
-  setupProtocol();
-
-  app.dock.hide();
-  app.setAboutPanelOptions({copyright: 'Copyright © Wulkano'});
-
-  // Ensure the app is in the Applications folder
-  enforceMacOSAppLocation();
-
-  await prepareNext('./renderer');
-
-  // Non-blocking initializations — don't await these
-  initializePlugins();
-  initializeDevices();
-  initializeAnalytics();
-  initializeTray();
-  initializeGlobalAccelerators();
-  setUpExportsListeners();
-
-  if (!app.isDefaultProtocolClient('kap')) {
-    app.setAsDefaultProtocolClient('kap');
-  }
-
-  if (filesToOpen.length > 0) {
-    track('editor/opened/startup');
-    openFiles(...filesToOpen);
-    hasActiveRecording().catch(console.error);
-  } else {
-    // Don't let permission checks block startup — handle async
-    (async () => {
-      try {
-        if (
-          !(await hasActiveRecording()) &&
-          !app.getLoginItemSettings().wasOpenedAtLogin &&
-          ensureScreenCapturePermissions() &&
-          (!settings.get('recordAudio') || hasMicrophoneAccess())
-        ) {
-          windowManager.cropper?.open();
-        }
-      } catch (error) {
-        console.error('Error during startup permission check:', error);
-        // Still try to open cropper even if permission check fails
-        windowManager.cropper?.open();
-      }
-    })();
-  }
-
-  checkForUpdates();
-})();
-
-app.on('window-all-closed', () => {
-  app.dock.hide();
-  // Don't quit — Kap is a tray app that lives in the menu bar
 });
 
 app.on('will-finish-launching', () => {
   app.on('open-url', (event, url) => {
     event.preventDefault();
-    handleDeepLink(url);
+    require('./utils/deep-linking').handleDeepLink(url);
   });
 });
+
+app.on('window-all-closed', () => {
+  app.dock.hide();
+});
+
+// ── Phase 1: Instant tray ───────────────────────────────────────────────────
+(async () => {
+  await app.whenReady();
+
+  app.dock.hide();
+  app.setAboutPanelOptions({copyright: 'Copyright © NewKap Contributors'});
+
+  // Show tray icon IMMEDIATELY — before loading any heavy modules
+  const tray = new Tray(path.join(__dirname, '..', 'static', 'menubarDefaultTemplate.png'));
+
+  // Temporary click handler until full tray module loads
+  let trayReady = false;
+  tray.on('click', () => {
+    if (trayReady) {
+      return; // Real handler is active
+    }
+
+    // If clicked before ready, wait for init then open
+    const waitForReady = setInterval(() => {
+      if (trayReady) {
+        clearInterval(waitForReady);
+        const {windowManager} = require('./windows/manager');
+        windowManager.cropper?.open();
+      }
+    }, 100);
+  });
+
+  // ── Phase 2: Background initialization ──────────────────────────────────
+  setImmediate(async () => {
+    // Error handling & logging (lightweight)
+    require('./utils/errors').setupErrorHandling();
+    require('electron-timber').hookConsole({main: true, renderer: true});
+    require('./utils/sentry');
+
+    // Protocol setup (needed before windows load)
+    require('./utils/protocol').setupProtocol();
+
+    // Prepare Next.js renderer (instant in production — just sets file protocol)
+    const prepareNext = require('electron-next');
+    await prepareNext('./renderer');
+
+    // Remote states (lightweight IPC setup)
+    require('./remote-states').setupRemoteStates();
+
+    // Load all window modules — registers cropper, editor, etc. with windowManager
+    require('./windows/load');
+
+    // Now replace the temporary tray with the full-featured one
+    tray.removeAllListeners('click');
+    tray.removeAllListeners('right-click');
+    const {initializeTray: wireUpTray} = require('./tray');
+    wireUpTray(tray);
+    trayReady = true;
+
+    // ── Phase 3: Deferred non-critical init ─────────────────────────────
+    setImmediate(() => {
+      const {initializeDevices} = require('./utils/devices');
+      const {initializeAnalytics} = require('./common/analytics');
+      const {initializeGlobalAccelerators} = require('./global-accelerators');
+      const {setUpExportsListeners} = require('./export');
+
+      initializeDevices();
+      initializeAnalytics();
+      initializeGlobalAccelerators();
+      setUpExportsListeners();
+
+      if (!app.isDefaultProtocolClient('kap')) {
+        app.setAsDefaultProtocolClient('kap');
+      }
+
+      // Open cropper window
+      const {windowManager} = require('./windows/manager');
+      const {settings} = require('./common/settings');
+      const {ensureScreenCapturePermissions, hasMicrophoneAccess} = require('./common/system-permissions');
+
+      if (filesToOpen.length > 0) {
+        require('./common/analytics').track('editor/opened/startup');
+        require('./utils/open-files').openFiles(...filesToOpen);
+        require('./recording-history').hasActiveRecording().catch(console.error);
+      } else {
+        (async () => {
+          try {
+            const {hasActiveRecording} = require('./recording-history');
+            if (
+              !(await hasActiveRecording()) &&
+              !app.getLoginItemSettings().wasOpenedAtLogin &&
+              ensureScreenCapturePermissions() &&
+              (!settings.get('recordAudio') || hasMicrophoneAccess())
+            ) {
+              windowManager.cropper?.open();
+            }
+          } catch (error) {
+            console.error('Error during startup permission check:', error);
+            windowManager.cropper?.open();
+          }
+        })();
+      }
+
+      // Plugin upgrade — fire and forget
+      const {is} = require('electron-util');
+      if (!is.development) {
+        const {plugins} = require('./plugins');
+        plugins.upgrade().catch((error: any) => {
+          console.log('Plugin upgrade failed (non-fatal):', error);
+        });
+      }
+
+      // Defer update check even further
+      setTimeout(() => {
+        if (is.development) {
+          return;
+        }
+
+        const log = require('electron-log');
+        const {autoUpdater} = require('electron-updater');
+        const toMilliseconds = require('@sindresorhus/to-milliseconds');
+
+        autoUpdater.logger = log;
+        autoUpdater.logger.transports.file.level = 'info';
+
+        const doCheck = async () => {
+          try {
+            await autoUpdater.checkForUpdates();
+          } catch (error) {
+            autoUpdater.logger?.error(error);
+          }
+        };
+
+        setInterval(doCheck, toMilliseconds({hours: 1}));
+        doCheck();
+      }, 10000);
+
+      // Enforce app location in background (non-blocking)
+      setTimeout(() => {
+        try {
+          const {enforceMacOSAppLocation} = require('electron-util');
+          enforceMacOSAppLocation();
+        } catch {}
+      }, 3000);
+    });
+  });
+})();
+
+// ── Quit handling ───────────────────────────────────────────────────────────
 
 const QUIT_TIMEOUT_MS = 5000;
 
 const performQuitCleanup = async () => {
   try {
+    const {stopRecordingWithNoEdit} = require('./aperture');
     await stopRecordingWithNoEdit();
   } catch (error) {
     console.error('Error stopping recording on quit:', error);
   }
 
   try {
+    const {cleanPastRecordings} = require('./recording-history');
     cleanPastRecordings();
   } catch (error) {
     console.error('Error cleaning recordings on quit:', error);
