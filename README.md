@@ -1,55 +1,110 @@
 <p align="center">
-  <img src="https://getkap.co/static/favicon/kap.svg" height="64">
-  <h3 align="center">Kap</h3>
-  <p align="center">An open-source screen recorder built with web technology<p>
-  <p align="center"><a href="https://circleci.com/gh/wulkano/kap"><img src="https://circleci.com/gh/wulkano/Kap.svg?style=shield" alt="Build Status"></a> <a href="https://github.com/sindresorhus/xo"><img src="https://img.shields.io/badge/code_style-XO-5ed9c7.svg" alt="XO code style"></a></p>
+  <img src="static/icon.png" height="140">
+  <h1 align="center">NewKap</h1>
+  <p align="center"><strong>Community-driven Kap fork focused on reliability and community maintenance</strong></p>
+  <p align="center">An open-source screen recorder built with web technology</p>
 </p>
 
-[![SWUbanner](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner2-direct.svg)](https://vshymanskyy.github.io/StandWithUkraine/)
+---
 
-## Get Kap
+## Why NewKap?
 
-Download the latest release:
+[Kap](https://github.com/wulkano/Kap) is an amazing open-source screen recorder, but it has not been actively maintained since 2022. The last release (v3.6.0) has critical bugs on macOS Sonoma and Sequoia, with 30+ open issues and 13 unmerged PRs sitting in the original repo.
 
-- [Apple silicon](https://getkap.co/api/download/arm64)
-- [Intel](https://getkap.co/api/download/x64)
+**NewKap** is a community-driven continuation, like Neovim is to Vim. Our goals:
 
-Or install with [Homebrew-Cask](https://caskroom.github.io):
+- Fix what is broken: macOS Sonoma/Sequoia compatibility, recording failures, app hangs
+- Community-owned: no single point of failure; the community drives development
+- Democratic governance: contributors vote on changes via GitHub Discussions
+- Regular releases: if it is fixed, ship it
 
-```sh
-brew install --cask kap
-```
+## What is Fixed (v4.0.0)
 
-## How To Use Kap
+| Issue | Fix |
+|-------|-----|
+| Could not start recording within 5 seconds | Increased timeout to 30s with automatic retry |
+| App will not quit / hangs on close | Proper async cleanup with 5s force-quit fallback |
+| App startup is slow / hangs | Non-blocking plugin upgrade and update checks |
+| Screen capture permission crash on Sonoma | Safe-load fallback for native permission module |
+| System Preferences links broken | Updated to System Settings for Sonoma/Sequoia |
+| Audio device crashes | Device caching with graceful error fallback |
+| Unhandled promise rejections | Expanded error handling throughout the app |
+| Recording history cleanup crash | Safe per-file deletion with existence checks |
 
-Click the menu bar icon to bring up the screen recorder. After selecting what portion of the screen you'd like to record, hit the record button to start recording. Click the menu bar icon again to stop the recording.
+## Install
 
-> Tip: While recording, Option-click the menu bar icon to pause or right-click for more options.
+Download the latest .dmg from [Releases](https://github.com/MuntasirMalek/NewKap/releases):
 
-## Contribute
+- **Intel Mac**: NewKap-4.0.0-x64.dmg
+- **Apple Silicon (M1/M2/M3)**: NewKap-4.0.0-arm64.dmg
 
-Read the [contribution guide](contributing.md).
+### First Launch (unsigned build)
 
-## Plugins
+Since NewKap is not code-signed, macOS will block it on first launch:
 
-For more info on how to create plugins, read the [plugins docs](docs/plugins.md).
+1. Drag NewKap to your Applications folder
+2. Right-click the app then Open (not double-click)
+3. Click Open in the security dialog
+4. Grant Screen Recording permission in System Settings then Privacy and Security then Screen Recording
 
-## Dev builds
+## Build from Source
 
-Download [`main`](https://kap-artifacts.now.sh/main) or builds for any other branch using: `https://kap-artifacts.now.sh/<branch>`. Note that these builds are unsupported and may have issues.
+Clone and install:
 
-## Related Repositories
+    git clone https://github.com/MuntasirMalek/NewKap.git
+    cd NewKap
+    yarn install --ignore-engines
 
-- [Website](https://github.com/wulkano/kap-website)
-- [Aperture](https://github.com/wulkano/aperture)
+Development:
 
-## Newsletter
+    unset ELECTRON_RUN_AS_NODE
+    yarn start
 
-[Subscribe](http://eepurl.com/ch90_1)
+Build distributable:
 
-## Thanks
+    NODE_OPTIONS="--openssl-legacy-provider" CSC_IDENTITY_AUTO_DISCOVERY=false yarn dist
 
-- [▲ Vercel](https://vercel.com/) for fast deployments served from the edge, hosting our website, downloads, and updates.
-- [● CircleCI](https://circleci.com/) for supporting the open source community and making our builds fast and reliable.
-- [△ Sentry](https://sentry.io/) for letting us know when Kap isn't behaving and helping us eradicate said behaviour.
-- Our [contributors](https://github.com/wulkano/kap/contributors) who help maintain Kap and make screen recording and sharing easy.
+Note: If running from VS Code terminal, you must unset ELECTRON_RUN_AS_NODE first.
+
+## Community Governance
+
+NewKap is community-governed. Here is how it works:
+
+### Contributing Changes
+
+1. Fork the repo, create a branch, make your changes
+2. Open a Pull Request with a clear description
+3. The community reviews and votes via thumbs-up/thumbs-down reactions on the PR
+4. PRs with 3+ approvals and no blocking issues get merged
+
+### Proposing Features
+
+1. Open a [Discussion](https://github.com/MuntasirMalek/NewKap/discussions) in the Ideas category
+2. The community votes with reactions
+3. Ideas with strong support get added to the roadmap
+
+### Becoming a Maintainer
+
+Active contributors who have had 3+ PRs merged can request maintainer access. Maintainers can:
+- Merge approved PRs
+- Create releases
+- Triage issues
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
+
+## Roadmap
+
+- [ ] Upgrade to modern Electron (28+)
+- [ ] Native Apple Silicon optimization
+- [ ] macOS Sequoia full compatibility
+- [ ] Plugin system modernization
+- [ ] Improved export formats
+- [ ] ProRes recording support
+
+## Credits
+
+NewKap is built on the incredible work of the [Kap](https://github.com/wulkano/Kap) team at [Wulkano](https://wulkano.com). We are grateful for the foundation they created.
+
+## License
+
+[MIT](LICENSE)
