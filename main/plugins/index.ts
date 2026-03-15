@@ -31,13 +31,23 @@ export class Plugins extends EventEmitter {
     new InstalledPlugin('_openWith', path.resolve(this.builtInDir, 'open-with-plugin'))
   ];
 
+  private _loaded = false;
+
   constructor() {
     super();
-    this.makePluginsDir();
-    this.loadPlugins();
+    // Don't do file I/O in constructor — defer to first access
+  }
+
+  private ensureLoaded() {
+    if (!this._loaded) {
+      this._loaded = true;
+      this.makePluginsDir();
+      this.loadPlugins();
+    }
   }
 
   async install(name: string): Promise<InstalledPlugin | void> {
+    this.ensureLoaded();
     track(`plugin/installed/${name}`);
 
     this.modifyMainPackageJson(pkg => {
@@ -129,10 +139,12 @@ export class Plugins extends EventEmitter {
   }
 
   async upgrade() {
+    this.ensureLoaded();
     return this.yarnInstall();
   }
 
   async getFromNpm() {
+    this.ensureLoaded();
     const url = 'https://api.npms.io/v2/search?q=keywords:kap-plugin+not:deprecated';
     const response = (await got(url, {json: true})) as {
       body: {results: Array<{package: NormalizedPackageJson}>};
@@ -154,6 +166,7 @@ export class Plugins extends EventEmitter {
   }
 
   get allPlugins() {
+    this.ensureLoaded();
     return [
       ...this.installedPlugins,
       ...this.builtInPlugins
