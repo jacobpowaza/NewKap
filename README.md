@@ -7,6 +7,15 @@
 
 ---
 
+## Install
+
+    brew tap MuntasirMalek/newkap
+    brew install --cask newkap
+
+Or download the `.dmg` directly from [Releases](https://github.com/MuntasirMalek/NewKap/releases/latest).
+
+---
+
 ## Why NewKap?
 
 [Kap](https://github.com/wulkano/Kap) is an amazing open-source screen recorder, but it has not been actively maintained since 2022. The last release (v3.6.0) has critical bugs on macOS Sonoma and Sequoia, with 30+ open issues and 13 unmerged PRs sitting in the original repo.
