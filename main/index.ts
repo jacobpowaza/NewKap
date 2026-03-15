@@ -8,6 +8,10 @@
 import {app, Tray} from 'electron';
 import path from 'path';
 
+// MUST run before any module loads — prevents "Move to Applications folder" dialog
+// by making Electron always think the app is in /Applications.
+(app as any).isInApplicationsFolder = () => true;
+
 const filesToOpen: string[] = [];
 let onExitCleanupComplete = false;
 
