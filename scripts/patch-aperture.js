@@ -60,20 +60,20 @@ function patchAllEnforceCopies(dir) {
       if (fs.existsSync(indexJs)) {
         let idx = fs.readFileSync(indexJs, 'utf8');
         if (idx.includes('isInApplicationsFolder') || idx.includes('Move to Applications folder')) {
-          // Replace enforceMacOSAppLocation export with a no-op
+          // Replace enforce export with no-op (handles all format variations)
           idx = idx.replace(
-            /exports\.enforceMacOSAppLocation\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*?\n\};/,
-            'exports.enforceMacOSAppLocation = () => {};'
+            /exports\.enforceMacOSAppLocation\s*=\s*\(\)\s*=>\s*\{/,
+            'exports.enforceMacOSAppLocation = () => { return;'
           );
-          // Also neuter the legacy function
+          // Neuter the legacy function
           idx = idx.replace(
             /function legacyEnforceMacOSAppLocation\(\)\s*\{/,
             'function legacyEnforceMacOSAppLocation() { return;'
           );
-          // Also neuter the isInApplicationsFolder function to always return true
+          // Make isInApplicationsFolder always return true
           idx = idx.replace(
-            /function isInApplicationsFolder\(\)\s*\{[\s\S]*?\n\}/,
-            'function isInApplicationsFolder() { return true; }'
+            /function isInApplicationsFolder\(\)\s*\{/,
+            'function isInApplicationsFolder() { return true;'
           );
           fs.writeFileSync(indexJs, idx);
           count++;
