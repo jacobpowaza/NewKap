@@ -61,9 +61,15 @@ jobs:
 
             app "NewKap.app"
 
+            postflight do
+              system_command "/usr/bin/xattr", args: ["-cr", "#{appdir}/NewKap.app"]
+            end
+
             zap trash: [
+              "~/Library/Application Support/NewKap",
               "~/Library/Application Support/Kap",
               "~/Library/Preferences/com.newkap.app.plist",
+              "~/Library/Logs/NewKap",
               "~/Library/Logs/Kap",
             ]
           end
