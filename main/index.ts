@@ -9,20 +9,41 @@ import {app, Tray, dialog} from 'electron';
 import path from 'path';
 
 // ── Block "Move to Applications folder" dialog permanently ──────────────────
-// The enforce function from electron-util can be called from both main and
-// renderer (via remote). Intercepting dialog.showMessageBoxSync is the only
-// approach that catches ALL code paths, including remote IPC calls.
+// Multiple copies of electron-util exist in dependencies, some using
+// showMessageBoxSync, others showMessageBox (async), and others showErrorBox.
+// We intercept ALL dialog methods to block any "Move to Applications" dialog.
+
 const _origShowMessageBoxSync = dialog.showMessageBoxSync;
 dialog.showMessageBoxSync = function(this: any) {
   // eslint-disable-next-line prefer-rest-params
   const args = Array.from(arguments);
   const opts: any = args.length === 1 ? args[0] : args[1];
-  if (opts?.message?.includes('Move to Applications folder')) {
-    return 1; // Return cancel index — silently blocks the dialog
+  if (opts?.message?.includes('Move to Applications folder') || opts?.message?.includes('Applications folder')) {
+    return 1;
   }
   return _origShowMessageBoxSync.apply(dialog, args as any);
 } as any;
-// Also override isInApplicationsFolder for any direct main-process checks
+
+const _origShowMessageBox = dialog.showMessageBox;
+dialog.showMessageBox = function(this: any) {
+  // eslint-disable-next-line prefer-rest-params
+  const args = Array.from(arguments);
+  const opts: any = args.length === 1 ? args[0] : args[1];
+  if (opts?.message?.includes('Move to Applications folder') || opts?.message?.includes('Applications folder')) {
+    return Promise.resolve({response: 1, checkboxChecked: false});
+  }
+  return _origShowMessageBox.apply(dialog, args as any);
+} as any;
+
+const _origShowErrorBox = dialog.showErrorBox;
+dialog.showErrorBox = function(title: string, content: string) {
+  if (title?.includes('Move to Applications folder') || title?.includes('Applications folder')) {
+    return; // Silently block
+  }
+  return _origShowErrorBox.call(dialog, title, content);
+} as any;
+
+// Override isInApplicationsFolder for any direct main-process checks
 Object.defineProperty(app, 'isInApplicationsFolder', {
   value: () => true,
   writable: true,
