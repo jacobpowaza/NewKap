@@ -9,10 +9,18 @@ const darwinMajor = Number.parseInt(require('os').release().split('.')[0], 10);
 const isSonomaOrNewer = darwinMajor >= 23;
 
 if (isSonomaOrNewer) {
-  // On Sonoma+, mac-screen-capture-permissions is unreliable — always returns false
-  // even when permission is granted. Skip the check and let aperture handle it.
-  hasScreenCapturePermission = () => true;
-  hasPromptedForPermission = () => true;
+  // On Sonoma+, mac-screen-capture-permissions can be unreliable.
+  // We still try to use it, but fall back gracefully.
+  try {
+    const macPerms = require('mac-screen-capture-permissions');
+    hasScreenCapturePermission = macPerms.hasScreenCapturePermission;
+    hasPromptedForPermission = macPerms.hasPromptedForPermission;
+  } catch (error) {
+    console.error('mac-screen-capture-permissions failed on Sonoma:', error);
+    // On failure, assume permission granted and let aperture handle errors
+    hasScreenCapturePermission = () => true;
+    hasPromptedForPermission = () => true;
+  }
 } else {
   try {
     const macPerms = require('mac-screen-capture-permissions');

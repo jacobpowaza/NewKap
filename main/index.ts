@@ -66,10 +66,27 @@ app.on('open-file', (event, filePath) => {
   }
 });
 
+// Queue deep links received before app is fully initialized
+let pendingDeepLink: string | undefined;
+let deepLinkReady = false;
+
+export const markDeepLinkReady = () => {
+  deepLinkReady = true;
+  if (pendingDeepLink) {
+    const url = pendingDeepLink;
+    pendingDeepLink = undefined;
+    require('./utils/deep-linking').handleDeepLink(url);
+  }
+};
+
 app.on('will-finish-launching', () => {
   app.on('open-url', (event, url) => {
     event.preventDefault();
-    require('./utils/deep-linking').handleDeepLink(url);
+    if (deepLinkReady) {
+      require('./utils/deep-linking').handleDeepLink(url);
+    } else {
+      pendingDeepLink = url;
+    }
   });
 });
 
@@ -134,6 +151,9 @@ app.on('window-all-closed', () => {
     const {initializeTray: wireUpTray} = require('./tray');
     wireUpTray(tray);
     trayReady = true;
+
+    // Process any deep links received during startup (e.g. kap://toggle)
+    markDeepLinkReady();
 
     // ── Phase 3: Deferred non-critical init (each step yields) ──────────
     await tick();
