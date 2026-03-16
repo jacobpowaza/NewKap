@@ -75,8 +75,8 @@ export const openSystemPreferences = async (path: string) => shell.openExternal(
 const getMicrophoneAccess = () => systemPreferences.getMediaAccessStatus('microphone');
 
 const microphoneFallback = promptSystemPreferences({
-  message: 'Kap cannot access the microphone.',
-  detail: 'Kap requires microphone access to be able to record audio. You can grant this in System Settings → Privacy & Security → Microphone. Afterwards, relaunch Kap.',
+  message: 'NewKap cannot access the microphone.',
+  detail: 'NewKap requires microphone access to be able to record audio. You can grant this in System Settings → Privacy & Security → Microphone. Afterwards, relaunch NewKap.',
   systemPreferencesPath: 'Privacy_Microphone'
 });
 
@@ -105,8 +105,8 @@ export const hasMicrophoneAccess = () => getMicrophoneAccess() === 'granted';
 // Screen Capture (10.15 and newer)
 
 const screenCaptureFallback = promptSystemPreferences({
-  message: 'Kap cannot record the screen.',
-  detail: 'Kap requires screen capture access to be able to record the screen. You can grant this in System Settings → Privacy & Security → Screen Recording. Afterwards, relaunch Kap.',
+  message: 'NewKap cannot record the screen.',
+  detail: 'NewKap requires screen capture access to be able to record the screen. You can grant this in System Settings → Privacy & Security → Screen Recording. Afterwards, relaunch NewKap.',
   systemPreferencesPath: 'Privacy_ScreenCapture'
 });
 

@@ -1,7 +1,7 @@
 {
   "name": "newkap",
   "productName": "NewKap",
-  "version": "4.0.5",
+  "version": "4.0.6",
   "description": "Community-driven Kap fork focused on reliability and community maintenance",
   "license": "MIT",
   "repository": "MuntasirMalek/NewKap",
@@ -264,8 +264,9 @@
       "hardenedRuntime": true,
       "entitlements": "./build/entitlements.mac.inherit.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Kap needs access to the microphone to be able to record audio for screen recordings.",
-        "NSCameraUsageDescription": "A Kap plugin wants to use the camera.",
+        "LSUIElement": true,
+        "NSMicrophoneUsageDescription": "NewKap needs access to the microphone to be able to record audio for screen recordings.",
+        "NSCameraUsageDescription": "A NewKap plugin wants to use the camera.",
         "NSUserNotificationAlertStyle": "alert",
         "CFBundleDocumentTypes": [
           {

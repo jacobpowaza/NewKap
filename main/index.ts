@@ -83,12 +83,18 @@ app.on('window-all-closed', () => {
     }, 100);
   });
 
-  // ── Phase 2: Background initialization ──────────────────────────────────
+  // ── Yield helper: breaks up synchronous work so macOS event loop stays responsive
+  const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+
+  // ── Phase 2: Background initialization (yielding between heavy requires) ──
   setImmediate(async () => {
     // Error handling & logging (lightweight)
     require('./utils/errors').setupErrorHandling();
     require('electron-timber').hookConsole({main: true, renderer: true});
+    await tick();
+
     require('./utils/sentry');
+    await tick();
 
     // Protocol setup (needed before windows load)
     require('./utils/protocol').setupProtocol();
@@ -96,12 +102,14 @@ app.on('window-all-closed', () => {
     // Prepare Next.js renderer (instant in production — just sets file protocol)
     const prepareNext = require('electron-next');
     await prepareNext('./renderer');
+    await tick();
 
     // Remote states (lightweight IPC setup)
     require('./remote-states').setupRemoteStates();
 
     // Load all window modules — registers cropper, editor, etc. with windowManager
     require('./windows/load');
+    await tick();
 
     // Now replace the temporary tray with the full-featured one
     tray.removeAllListeners('click');
@@ -110,88 +118,84 @@ app.on('window-all-closed', () => {
     wireUpTray(tray);
     trayReady = true;
 
-    // ── Phase 3: Deferred non-critical init ─────────────────────────────
-    setImmediate(() => {
-      const {initializeDevices} = require('./utils/devices');
-      const {initializeAnalytics} = require('./common/analytics');
-      const {initializeGlobalAccelerators} = require('./global-accelerators');
-      const {setUpExportsListeners} = require('./export');
+    // ── Phase 3: Deferred non-critical init (each step yields) ──────────
+    await tick();
 
-      initializeDevices();
-      initializeAnalytics();
-      initializeGlobalAccelerators();
-      setUpExportsListeners();
+    const {initializeDevices} = require('./utils/devices');
+    const {initializeAnalytics} = require('./common/analytics');
+    const {initializeGlobalAccelerators} = require('./global-accelerators');
+    const {setUpExportsListeners} = require('./export');
 
-      if (!app.isDefaultProtocolClient('kap')) {
-        app.setAsDefaultProtocolClient('kap');
-      }
+    initializeDevices();
+    initializeAnalytics();
+    initializeGlobalAccelerators();
+    setUpExportsListeners();
 
-      // Open cropper window
-      const {windowManager} = require('./windows/manager');
-      const {settings} = require('./common/settings');
-      const {ensureScreenCapturePermissions, hasMicrophoneAccess} = require('./common/system-permissions');
+    if (!app.isDefaultProtocolClient('kap')) {
+      app.setAsDefaultProtocolClient('kap');
+    }
 
-      if (filesToOpen.length > 0) {
-        require('./common/analytics').track('editor/opened/startup');
-        require('./utils/open-files').openFiles(...filesToOpen);
-        require('./recording-history').hasActiveRecording().catch(console.error);
-      } else {
-        (async () => {
-          try {
-            const {hasActiveRecording} = require('./recording-history');
-            if (
-              !(await hasActiveRecording()) &&
-              !app.getLoginItemSettings().wasOpenedAtLogin &&
-              ensureScreenCapturePermissions() &&
-              (!settings.get('recordAudio') || hasMicrophoneAccess())
-            ) {
-              windowManager.cropper?.open();
-            }
-          } catch (error) {
-            console.error('Error during startup permission check:', error);
-            windowManager.cropper?.open();
-          }
-        })();
-      }
+    await tick();
 
-      // Plugin upgrade — fire and forget
-      const {is} = require('electron-util');
-      if (!is.development) {
-        const {plugins} = require('./plugins');
-        plugins.upgrade().catch((error: any) => {
-          console.log('Plugin upgrade failed (non-fatal):', error);
-        });
-      }
+    // Open cropper window
+    const {windowManager} = require('./windows/manager');
+    const {settings} = require('./common/settings');
+    const {ensureScreenCapturePermissions, hasMicrophoneAccess} = require('./common/system-permissions');
 
-      // Defer update check even further
-      setTimeout(() => {
-        if (is.development) {
-          return;
+    if (filesToOpen.length > 0) {
+      require('./common/analytics').track('editor/opened/startup');
+      require('./utils/open-files').openFiles(...filesToOpen);
+      require('./recording-history').hasActiveRecording().catch(console.error);
+    } else {
+      try {
+        const {hasActiveRecording} = require('./recording-history');
+        if (
+          !(await hasActiveRecording()) &&
+          !app.getLoginItemSettings().wasOpenedAtLogin &&
+          ensureScreenCapturePermissions() &&
+          (!settings.get('recordAudio') || hasMicrophoneAccess())
+        ) {
+          windowManager.cropper?.open();
         }
+      } catch (error) {
+        console.error('Error during startup permission check:', error);
+        windowManager.cropper?.open();
+      }
+    }
 
-        const log = require('electron-log');
-        const {autoUpdater} = require('electron-updater');
-        const toMilliseconds = require('@sindresorhus/to-milliseconds');
+    // Plugin upgrade — fire and forget
+    const {is} = require('electron-util');
+    if (!is.development) {
+      const {plugins} = require('./plugins');
+      plugins.upgrade().catch((error: any) => {
+        console.log('Plugin upgrade failed (non-fatal):', error);
+      });
+    }
 
-        autoUpdater.logger = log;
-        autoUpdater.logger.transports.file.level = 'info';
+    // Defer update check
+    setTimeout(() => {
+      if (is.development) {
+        return;
+      }
 
-        const doCheck = async () => {
-          try {
-            await autoUpdater.checkForUpdates();
-          } catch (error) {
-            autoUpdater.logger?.error(error);
-          }
-        };
+      const log = require('electron-log');
+      const {autoUpdater} = require('electron-updater');
+      const toMilliseconds = require('@sindresorhus/to-milliseconds');
 
-        setInterval(doCheck, toMilliseconds({hours: 1}));
-        doCheck();
-      }, 10000);
+      autoUpdater.logger = log;
+      autoUpdater.logger.transports.file.level = 'info';
 
-      // enforceMacOSAppLocation intentionally removed:
-      // Homebrew installs directly to /Applications, so this check is never needed
-      // and showed a confusing "Kap must live in Applications" dialog with wrong branding.
-    });
+      const doCheck = async () => {
+        try {
+          await autoUpdater.checkForUpdates();
+        } catch (error) {
+          autoUpdater.logger?.error(error);
+        }
+      };
+
+      setInterval(doCheck, toMilliseconds({hours: 1}));
+      doCheck();
+    }, 10_000);
   });
 })();
 
