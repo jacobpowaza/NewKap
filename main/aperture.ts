@@ -24,6 +24,8 @@ let apertureOptions: ApertureOptions;
 let recordingName: string | undefined;
 let past: number | undefined;
 
+export const isPast = () => Boolean(past);
+
 const setRecordingName = (name: string) => {
   recordingName = name;
 };
