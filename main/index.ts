@@ -69,10 +69,12 @@ app.on('open-file', (event, filePath) => {
 // Queue deep links received before app is fully initialized
 let pendingDeepLink: string | undefined;
 let deepLinkReady = false;
+let hadDeepLinkOnStartup = false;
 
 export const markDeepLinkReady = () => {
   deepLinkReady = true;
   if (pendingDeepLink) {
+    hadDeepLinkOnStartup = true;
     const url = pendingDeepLink;
     pendingDeepLink = undefined;
     require('./utils/deep-linking').handleDeepLink(url);
@@ -189,8 +191,8 @@ app.on('window-all-closed', () => {
       require('./common/analytics').track('editor/opened/startup');
       require('./utils/open-files').openFiles(...filesToOpen);
       require('./recording-history').hasActiveRecording().catch(console.error);
-    } else if (pendingDeepLink) {
-      // Skip cropper — a deep link (e.g. kap://record) will handle things
+    } else if (hadDeepLinkOnStartup) {
+      // Skip cropper — deep link (e.g. kap://record) is handling startup
     } else {
       try {
         const {hasActiveRecording} = require('./recording-history');
