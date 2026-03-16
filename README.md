@@ -13,6 +13,40 @@
 
 Automatically installs the right version for your Mac (Intel or Apple Silicon).
 
+### Quick Record Shortcut (Karabiner Elements)
+
+If you use [Karabiner Elements](https://karabiner-elements.pqrs.org/), you can add a **Hyper+R** shortcut to instantly record your entire screen:
+
+Add this rule to your `karabiner.json` under `complex_modifications > rules`:
+
+```json
+{
+  "description": "Hyper+R: Record (if closed) / Quit (if open)",
+  "manipulators": [
+    {
+      "from": {
+        "key_code": "r",
+        "modifiers": {
+          "mandatory": ["left_shift", "left_command", "left_control", "left_option"]
+        }
+      },
+      "to": [
+        {
+          "shell_command": "if pgrep -x NewKap > /dev/null; then osascript -e 'quit app \"NewKap\"'; else open 'kap://record'; fi"
+        }
+      ],
+      "type": "basic"
+    }
+  ]
+}
+```
+
+**How it works:**
+- **App closed** → Opens NewKap and instantly starts full-screen recording (no cropper UI)
+- **App open** → Quits NewKap (stops recording and opens editor if recording was active)
+
+> **Tip:** NewKap also supports deep links: `kap://record` (start recording) and `kap://stop` (stop recording). You can use these from any automation tool.
+
 ### Uninstall (clean, removes all app data)
 
     brew uninstall --zap --cask newkap
