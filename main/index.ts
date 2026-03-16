@@ -189,6 +189,8 @@ app.on('window-all-closed', () => {
       require('./common/analytics').track('editor/opened/startup');
       require('./utils/open-files').openFiles(...filesToOpen);
       require('./recording-history').hasActiveRecording().catch(console.error);
+    } else if (pendingDeepLink) {
+      // Skip cropper — a deep link (e.g. kap://record) will handle things
     } else {
       try {
         const {hasActiveRecording} = require('./recording-history');

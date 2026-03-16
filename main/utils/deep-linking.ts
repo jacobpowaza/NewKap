@@ -1,4 +1,4 @@
-import {app, screen, dialog, shell} from 'electron';
+import {screen, dialog, shell} from 'electron';
 import {windowManager} from '../windows/manager';
 
 const pluginPromises = new Map<string, (path: string) => void>();
@@ -21,14 +21,16 @@ export const addPluginPromise = (plugin: string, resolveFunction: (path: string)
 
 const triggerPluginAction = (action: string) => (name: string) => windowManager.preferences?.open({target: {name, action}});
 
-// Show a user-friendly dialog when recording fails due to missing permission
 const showPermissionError = async () => {
   const {response} = await dialog.showMessageBox({
     type: 'warning',
     buttons: ['Open System Settings', 'OK'],
     defaultId: 0,
     message: 'Screen Recording permission required',
-    detail: 'NewKap needs Screen Recording permission to record.\n\n1. Click "Open System Settings"\n2. Find "NewKap" and toggle it ON\n3. Quit and relaunch NewKap\n\nIf NewKap is already listed but recording still fails, toggle it OFF then ON again, then quit and relaunch.'
+    detail: 'NewKap needs Screen Recording permission.\n\n' +
+      '1. Open System Settings > Privacy & Security > Screen Recording\n' +
+      '2. Toggle NewKap ON\n' +
+      '3. Quit and relaunch NewKap'
   });
 
   if (response === 0) {
@@ -36,9 +38,12 @@ const showPermissionError = async () => {
   }
 };
 
-// Start full-screen recording on the display under the cursor
+// Start full-screen  no cropper windowrecording 
 const handleRecordFullScreen = async () => {
   try {
+    // Close cropper if it's open
+    windowManager.cropper?.close();
+
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     const {width, height} = display.bounds;
 
@@ -52,7 +57,6 @@ const handleRecordFullScreen = async () => {
     console.log(`Full-screen recording started on display ${display.id} (${width}x${height})`);
   } catch (error: any) {
     console.error('Failed to start full-screen recording:', error);
-    // Check for permission-related errors
     const errorStr = String(error?.message || error);
     if (errorStr.includes('Cannot Record') || errorStr.includes('-11805') || errorStr.includes('not authorized')) {
       await showPermissionError();
@@ -60,7 +64,7 @@ const handleRecordFullScreen = async () => {
   }
 };
 
-// Stop recording if one is active
+// Stop recording
 const handleStopRecording = async () => {
   try {
     const {stopRecording} = require('../aperture');
@@ -70,29 +74,12 @@ const handleStopRecording = async () => {
   }
 };
 
-// Toggle: start full-screen recording if idle, stop recording + quit if recording
-const handleToggleRecording = async () => {
-  try {
-    const {isPast} = require('../aperture');
-    if (isPast()) {
-      await handleStopRecording();
-      // Give the editor a moment to open, then quit
-      setTimeout(() => app.quit(), 1500);
-    } else {
-      await handleRecordFullScreen();
-    }
-  } catch (error) {
-    console.error('Failed to toggle recording:', error);
-  }
-};
-
 const routes = new Map<string, (path: string) => void | Promise<void>>([
   ['plugins', handlePluginsDeepLink],
   ['install-plugin', triggerPluginAction('install')],
   ['configure-plugin', triggerPluginAction('configure')],
   ['record', handleRecordFullScreen as any],
-  ['stop', handleStopRecording as any],
-  ['toggle', handleToggleRecording as any]
+  ['stop', handleStopRecording as any]
 ]);
 
 export const handleDeepLink = (url: string) => {
