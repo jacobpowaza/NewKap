@@ -33,10 +33,62 @@ if (patched) {
   console.log('✅ Aperture already patched or timeout not found');
 }
 
-// Patch electron-util: disable enforceMacOSAppLocation (unreliable, wrong branding)
-const enforcePath = path.join(__dirname, '..', 'node_modules', 'electron-util', 'source', 'enforce-macos-app-location.js');
-if (fs.existsSync(enforcePath)) {
-  const noopContent = `'use strict';\n// Patched by NewKap: disabled — unreliable and shows wrong branding.\nmodule.exports = () => {};\n`;
-  fs.writeFileSync(enforcePath, noopContent);
-  console.log('✅ Patched electron-util: enforceMacOSAppLocation disabled');
+// Patch ALL copies of electron-util: disable enforceMacOSAppLocation everywhere
+// There are multiple nested copies (mac-open-with, macos-audio-devices,
+// mac-screen-capture-permissions, electron-timber) that each bundle their own
+// electron-util with the enforce function still active.
+const noopEnforce = `'use strict';\n// Patched by NewKap: disabled — unreliable and shows wrong branding.\nmodule.exports = () => {};\n`;
+const nodeModulesDir = path.join(__dirname, '..', 'node_modules');
+
+function patchAllEnforceCopies(dir) {
+  let count = 0;
+  const entries = fs.readdirSync(dir, {withFileTypes: true});
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const full = path.join(dir, entry.name);
+
+    if (entry.name === 'electron-util') {
+      // Patch source/enforce-macos-app-location.js if it exists
+      const srcEnforce = path.join(full, 'source', 'enforce-macos-app-location.js');
+      if (fs.existsSync(srcEnforce)) {
+        fs.writeFileSync(srcEnforce, noopEnforce);
+        count++;
+      }
+
+      // Patch bundled index.js (v0.8.x has enforce inline in index.js)
+      const indexJs = path.join(full, 'index.js');
+      if (fs.existsSync(indexJs)) {
+        let idx = fs.readFileSync(indexJs, 'utf8');
+        if (idx.includes('isInApplicationsFolder') || idx.includes('Move to Applications folder')) {
+          // Replace enforceMacOSAppLocation export with a no-op
+          idx = idx.replace(
+            /exports\.enforceMacOSAppLocation\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*?\n\};/,
+            'exports.enforceMacOSAppLocation = () => {};'
+          );
+          // Also neuter the legacy function
+          idx = idx.replace(
+            /function legacyEnforceMacOSAppLocation\(\)\s*\{/,
+            'function legacyEnforceMacOSAppLocation() { return;'
+          );
+          // Also neuter the isInApplicationsFolder function to always return true
+          idx = idx.replace(
+            /function isInApplicationsFolder\(\)\s*\{[\s\S]*?\n\}/,
+            'function isInApplicationsFolder() { return true; }'
+          );
+          fs.writeFileSync(indexJs, idx);
+          count++;
+        }
+      }
+    }
+
+    // Recurse into node_modules
+    const nested = path.join(full, 'node_modules');
+    if (fs.existsSync(nested) && fs.statSync(nested).isDirectory()) {
+      count += patchAllEnforceCopies(nested);
+    }
+  }
+  return count;
 }
+
+const patchCount = patchAllEnforceCopies(nodeModulesDir);
+console.log(`✅ Patched ${patchCount} copies of electron-util: enforceMacOSAppLocation disabled`);
