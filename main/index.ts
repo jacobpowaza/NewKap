@@ -109,12 +109,8 @@ app.on('window-all-closed', () => {
 
   // ── Phase 2: Background initialization (yielding between heavy requires) ──
   setImmediate(async () => {
-    // Error handling & logging (lightweight)
+    // Error handling (lightweight)
     require('./utils/errors').setupErrorHandling();
-    require('electron-timber').hookConsole({main: true, renderer: true});
-    await tick();
-
-    require('./utils/sentry');
     await tick();
 
     // Protocol setup (needed before windows load)
@@ -140,6 +136,12 @@ app.on('window-all-closed', () => {
     trayReady = true;
 
     // ── Phase 3: Deferred non-critical init (each step yields) ──────────
+    await tick();
+
+    // Logging & telemetry (deferred — heavy modules, not needed for tray/recording)
+    try { require('electron-timber').hookConsole({main: true, renderer: true}); } catch {}
+    await tick();
+    try { require('./utils/sentry'); } catch {}
     await tick();
 
     const {initializeDevices} = require('./utils/devices');
