@@ -6,16 +6,20 @@
 
 ---
 
-## Install
+## Quick Install
 
     brew tap MuntasirMalek/newkap
     brew install --cask newkap
 
 Automatically installs the right version for your Mac (Intel or Apple Silicon).
 
-### Quick Record Shortcut (Karabiner Elements)
+## Uninstall (clean, removes all app data)
 
-If you use [Karabiner Elements](https://karabiner-elements.pqrs.org/), you can add a **Hyper+R** shortcut to instantly record your entire screen:
+    brew uninstall --zap --cask newkap
+
+## Quick Record Shortcut (Karabiner Elements)
+
+If you use [Karabiner Elements](https://karabiner-elements.pqrs.org/), you can add a **Hyper+R** (Hyper Meaning - https://github.com/MuntasirMalek/setup/blob/main/karabiner.json) shortcut to instantly record your entire screen:
 
 Add this rule to your `karabiner.json` under `complex_modifications > rules`:
 
@@ -46,12 +50,6 @@ Add this rule to your `karabiner.json` under `complex_modifications > rules`:
 - **App open** → Quits NewKap (stops recording and opens editor if recording was active)
 
 > **Tip:** NewKap also supports deep links: `kap://record` (start recording) and `kap://stop` (stop recording). You can use these from any automation tool.
-
-### Uninstall (clean, removes all app data)
-
-    brew uninstall --zap --cask newkap
-
-Or download the `.dmg` directly from [Releases](https://github.com/MuntasirMalek/NewKap/releases/latest).
 
 ---
 
