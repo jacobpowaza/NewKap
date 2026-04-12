@@ -81,17 +81,22 @@ Add this rule to your `karabiner.json` under `complex_modifications > rules`:
 
 Download the latest .dmg from [Releases](https://github.com/MuntasirMalek/NewKap/releases):
 
-- **Intel Mac**: NewKap-4.0.0-x64.dmg
-- **Apple Silicon (M1/M2/M3)**: NewKap-4.0.0-arm64.dmg
+- **Intel Mac**: NewKap-4.0.12-x64.dmg
+- **Apple Silicon (M1/M2/M3)**: NewKap-4.0.12-arm64.dmg
 
 ### First Launch (unsigned build)
 
-Since NewKap is not code-signed, macOS will block it on first launch:
+Since NewKap is not yet notarized with Apple, macOS may show an **"app is damaged"** warning or block the app on first launch. To fix this, run the following after dragging NewKap to your Applications folder:
 
-1. Drag NewKap to your Applications folder
-2. Right-click the app then Open (not double-click)
-3. Click Open in the security dialog
-4. Grant Screen Recording permission in System Settings then Privacy and Security then Screen Recording
+```bash
+xattr -cr /Applications/NewKap.app
+```
+
+Then:
+
+1. Right-click the app and select Open (not double-click)
+2. Click Open in the security dialog
+3. Grant Screen Recording permission in System Settings → Privacy & Security → Screen Recording
 
 ## Build from Source
 
