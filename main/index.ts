@@ -121,6 +121,7 @@ app.on('window-all-closed', () => {
     require('./remote-states').setupRemoteStates();
 
     // Phase 2: Only load cropper first — defer all other window modules
+    mark('before cropper require');
     require('./windows/cropper');
     mark('cropper module loaded');
     await tick();
@@ -131,6 +132,7 @@ app.on('window-all-closed', () => {
     const {initializeTray: wireUpTray} = require('./tray');
     wireUpTray(tray);
     trayReady = true;
+    mark('tray ready');
 
     if (pendingOpenCropper) {
       pendingOpenCropper = false;

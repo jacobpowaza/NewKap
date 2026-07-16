@@ -10,6 +10,7 @@ const readyCroppers = new Set<number>();
 let notificationId: number | undefined;
 let isOpen = false;
 let openingPromise: Promise<void> | undefined;
+let isDestroying = false;
 
 const createCropper = (display: Display, activeDisplayId?: number): BrowserWindow => {
   const {id, bounds} = display;
@@ -43,8 +44,19 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
     sendDisplayInfo(cropper, display, activeDisplayId);
   });
 
+  cropper.on('close', event => {
+    if (isDestroying) {
+      return;
+    }
+
+    event.preventDefault();
+    closeAllCroppers();
+  });
+
   cropper.on('closed', () => {
-    croppers.delete(id);
+    if (croppers.has(id)) {
+      croppers.delete(id);
+    }
     readyCroppers.delete(cropper.id);
   });
 
@@ -72,6 +84,7 @@ const closeAllCroppers = () => {
 };
 
 const destroyAllCroppers = () => {
+  isDestroying = true;
   screen.removeAllListeners('display-removed');
   screen.removeAllListeners('display-added');
 
@@ -114,6 +127,7 @@ const ensureCroppers = async (activeDisplayId: number): Promise<void> => {
 
   for (const [displayId, cropper] of croppers) {
     if (!currentDisplayIds.has(displayId)) {
+      cropper.removeAllListeners('close');
       cropper.removeAllListeners('closed');
       cropper.destroy();
       croppers.delete(displayId);
@@ -222,6 +236,7 @@ const openCropperWindow = async () => {
 
         const wasFocused = cropper.isFocused();
 
+        cropper.removeAllListeners('close');
         cropper.removeAllListeners('closed');
         cropper.destroy();
         croppers.delete(id);
