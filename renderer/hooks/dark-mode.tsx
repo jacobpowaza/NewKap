@@ -1,16 +1,15 @@
 import {useState, useEffect} from 'react';
+import kap from '../utils/kap';
 
 const useDarkMode = () => {
-  const {nativeTheme} = require('../utils/electron-remote');
-  const [isDarkMode, setIsDarkMode] = useState(nativeTheme.shouldUseDarkColors);
+  const [isDarkMode, setIsDarkMode] = useState(kap.system.shouldUseDarkColors());
 
   useEffect(() => {
     const updateDarkMode = () => {
-      setIsDarkMode(nativeTheme.shouldUseDarkColors);
+      setIsDarkMode(kap.system.shouldUseDarkColors());
     };
 
-    nativeTheme.on('updated', updateDarkMode);
-    return () => nativeTheme.off('updated', updateDarkMode);
+    return kap.system.onNativeThemeUpdated(updateDarkMode);
   }, []);
 
   return isDarkMode;

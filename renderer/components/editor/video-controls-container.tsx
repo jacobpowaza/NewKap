@@ -3,7 +3,6 @@ import {useRef, useState, useEffect} from 'react';
 
 const useVideoControls = () => {
   const videoRef = useRef<HTMLVideoElement>();
-  const currentWindow = require('../../utils/electron-remote').getCurrentWindow();
   const wasPaused = useRef(true);
   const transitioningPauseState = useRef<Promise<void>>();
 
@@ -54,7 +53,7 @@ const useVideoControls = () => {
   const videoProps = {
     onCanPlayThrough: hasStarted ? undefined : () => {
       setHasStarted(true);
-      if (currentWindow.isFocused()) {
+      if (document.hasFocus()) {
         play();
       }
     },
@@ -87,12 +86,12 @@ const useVideoControls = () => {
       }
     };
 
-    currentWindow.addListener('blur', blurListener);
-    currentWindow.addListener('focus', focusListener);
+    window.addEventListener('blur', blurListener);
+    window.addEventListener('focus', focusListener);
 
     return () => {
-      currentWindow.removeListener('blur', blurListener);
-      currentWindow.removeListener('focus', focusListener);
+      window.removeEventListener('blur', blurListener);
+      window.removeEventListener('focus', focusListener);
     };
   }, []);
 

@@ -1,11 +1,11 @@
-import {MenuItemConstructorOptions} from 'electron';
 import React, {FunctionComponent, useRef} from 'react';
 import {SvgProps} from 'vectors/svg';
+import {popupMenu} from '../utils/menu-actions';
 
 type MenuProps = {
   onOpen: (options: {x: number; y: number}) => void;
 } | {
-  template: MenuItemConstructorOptions[];
+  template: any[];
 };
 
 type IconMenuProps = SvgProps & MenuProps & {
@@ -27,9 +27,7 @@ const IconMenu: FunctionComponent<IconMenuProps> = props => {
         y: Math.round(bottom)
       });
     } else {
-      const remote = require('../utils/electron-remote');
-      const menu = remote.Menu.buildFromTemplate(props.template);
-      menu.popup({
+      void popupMenu(props.template, {
         x: Math.round(left),
         y: Math.round(bottom)
       });

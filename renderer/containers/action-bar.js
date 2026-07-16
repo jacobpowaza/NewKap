@@ -1,20 +1,16 @@
 import {Container} from 'unstated';
+import kap from '../utils/kap';
 
 const barWidth = 464;
 const barHeight = 64;
 
-export default class ActionBarContainer extends Container {
-  remote = require('../utils/electron-remote');
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+export default class ActionBarContainer extends Container {
   constructor() {
     super();
 
-    if (!this.remote) {
-      this.state = {};
-      return;
-    }
-
-    this.settings = this.remote.require('./common/settings').settings;
+    this.settings = kap.settings;
     this.state = {
       cropperWidth: '',
       cropperHeight: ''
@@ -39,12 +35,16 @@ export default class ActionBarContainer extends Container {
   setDisplay = display => {
     const {width, height, cropper} = display;
     const {x, y, ratioLocked} = cropper ? this.settings.get('actionBar') : {};
+    const fallbackX = (width - barWidth) / 2;
+    const fallbackY = Math.ceil(height * 0.8);
+    const parsedX = Number.isFinite(x) ? x : fallbackX;
+    const parsedY = Number.isFinite(y) ? y : fallbackY;
 
     this.setState({
       screenWidth: width,
       screenHeight: height,
-      x: x ? x : (width - barWidth) / 2,
-      y: y ? y : Math.ceil(height * 0.8),
+      x: clamp(parsedX, 0, Math.max(0, width - barWidth)),
+      y: clamp(parsedY, 0, Math.max(0, height - barHeight)),
       width: barWidth,
       height: barHeight,
       ratioLocked

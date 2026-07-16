@@ -1,7 +1,7 @@
 import electron, {app, BrowserWindow, Menu} from 'electron';
-import {enable as enableRemote} from '@electron/remote/main';
 import {ipcMain as ipc} from 'electron-better-ipc';
 import pEvent from 'p-event';
+import path from 'path';
 import {customApplicationMenu, defaultApplicationMenu, MenuModifier} from '../menus/application';
 import {loadRoute} from '../utils/routes';
 
@@ -51,18 +51,16 @@ export default class KapWindow<State = any> {
     this.browserWindow = new BrowserWindow({
       ...rest,
       webPreferences: {
-        nodeIntegration: true,
-        enableRemoteModule: true,
-        contextIsolation: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: path.join(__dirname, '..', 'preload.js'),
         ...rest.webPreferences
-      } as any,
+      },
       show: false
     });
 
     this.id = this.browserWindow.id;
     KapWindow.windows.set(this.id, this);
-
-    enableRemote(this.browserWindow.webContents);
 
     this.cleanupMethods = [];
     this.options = {

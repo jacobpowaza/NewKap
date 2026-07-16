@@ -1,6 +1,6 @@
-import electron from 'electron';
 import React, {useCallback, useMemo} from 'react';
 import classNames from 'classnames';
+import kap from '../../utils/kap';
 
 import IconMenu from '../icon-menu';
 import {CancelIcon, MoreIcon} from '../../vectors';
@@ -8,7 +8,6 @@ import {Progress, ProgressSpinner} from './progress';
 import useConversion from '../../hooks/editor/use-conversion';
 import {ExportStatus} from '../../common/types';
 import {useShowWindow} from '../../hooks/use-show-window';
-import {MenuItemConstructorOptions} from 'electron/common';
 
 const stopPropagation = event => event.stopPropagation();
 
@@ -36,12 +35,12 @@ const Export = ({id}: {id: string}) => {
   const onDragStart = useCallback(event => {
     event.preventDefault();
     if (isActionable) {
-      electron.ipcRenderer.send('drag-export', state?.id);
+      kap.ipc.send('drag-export', state?.id);
     }
   }, [isActionable, state?.id]);
 
   const template = useMemo(() => {
-    const menuTemplate: MenuItemConstructorOptions[] = [{
+    const menuTemplate: any[] = [{
       label: 'Open Original',
       click: () => openInEditor()
     }];

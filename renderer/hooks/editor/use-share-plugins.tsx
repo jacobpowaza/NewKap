@@ -1,6 +1,5 @@
 import OptionsContainer from 'components/editor/options-container';
-const remote = require('../../utils/electron-remote');
-import {ipcRenderer} from 'electron-better-ipc';
+import {ipcRenderer} from '../../utils/ipc';
 import {useMemo} from 'react';
 
 const useSharePlugins = () => {
@@ -26,7 +25,7 @@ const useSharePlugins = () => {
             serviceTitle: plugin.title,
             app
           },
-          icon: remote.nativeImage.createFromDataURL(app.icon).resize({width: 16, height: 16})
+          icon: app.icon
         }));
 
         if (plugin.apps[0].isDefault) {
@@ -67,7 +66,7 @@ const useSharePlugins = () => {
         label: 'Get Plugins…',
         checked: false,
         click: () => {
-          ipcRenderer.callMain('open-preferences', {category: 'plugins', tab: 'discover'});
+          void ipcRenderer.callMain('open-preferences', {category: 'plugins', tab: 'discover'});
         }
       } as any);
     }

@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import {shake} from '../../utils/inputs';
 import {checkAccelerator, eventKeyToAccelerator} from 'common/accelerator-validator';
 import {DropdownArrowIcon} from '../../vectors';
+import {popupMenu} from '../../utils/menu-actions';
 
 const presets = [
   'Command+Shift+3',
@@ -154,16 +155,15 @@ const ShortcutInput = ({shortcut = '', onChange, tabIndex}) => {
   };
 
   const openMenu = () => {
-    const {Menu} = require('../../utils/electron-remote');
-    const menu = Menu.buildFromTemplate(presets.map(accelerator => ({
+    const template = presets.map(accelerator => ({
       label: accelerator.split('+').map(key => metaCharacters.get(key) || key).join(''),
       click: () => {
         onChange(accelerator);
       }
-    })));
+    }));
 
     const {left, top} = boxRef.current.getBoundingClientRect();
-    menu.popup({
+    popupMenu(template, {
       x: Math.round(left),
       y: Math.round(top)
     });

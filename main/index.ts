@@ -1,8 +1,8 @@
 import {app, BrowserWindow, Tray, Menu, dialog, nativeImage} from 'electron';
 import path from 'path';
 import fs from 'fs';
-import {initialize as initializeRemote} from '@electron/remote/main';
 import {mark} from './utils/perf';
+import {setupRendererApi} from './renderer-api';
 
 mark('main module entered');
 
@@ -13,6 +13,10 @@ if (process.platform === 'darwin') {
   app.setActivationPolicy('accessory');
 
   const preserveMenuBarPolicy = () => {
+    if ((app as any).__kapDockVisible) {
+      return;
+    }
+
     app.setActivationPolicy('accessory');
   };
 
@@ -110,20 +114,7 @@ app.on('window-all-closed', () => {
     app.setActivationPolicy('accessory');
   }
 
-  // Initialize @electron/remote compatibility bridge.
-  // Each BrowserWindow must also call enable() on its webContents.
-  initializeRemote();
-
-  // @electron/remote cannot resolve relative app modules from Electron's root
-  // module on Electron 28+. Resolve the existing app-owned calls here.
-  (app as any).on('remote-require', (event: any, _contents: Electron.WebContents, moduleName: string) => {
-    try {
-      event.returnValue = require(moduleName);
-    } catch (error) {
-      console.error(`[remote] failed to require ${moduleName}`, error);
-      throw error;
-    }
-  });
+  setupRendererApi();
 
   app.dock?.hide();
   app.setAboutPanelOptions({
@@ -188,7 +179,11 @@ app.on('window-all-closed', () => {
       if (isDev.development) {
         const preloadWin = new BrowserWindow({
           show: false,
-          webPreferences: {nodeIntegration: true, enableRemoteModule: true, contextIsolation: false} as any
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            preload: path.join(__dirname, 'preload.js')
+          }
         });
         await preloadWin.loadURL('http://localhost:8000/cropper');
         preloadWin.destroy();

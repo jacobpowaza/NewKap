@@ -9,7 +9,8 @@ const shortcutToAccelerator = require('../utils/shortcut-to-accelerator');
 
 export const shortcuts = {
   triggerCropper: 'Start Recording',
-  stopRecording: 'Stop Recording'
+  stopRecording: 'Stop Recording',
+  pauseRecording: 'Pause Recording'
 };
 
 export type RecordingQuality = 'standard' | 'high' | 'maximum';
@@ -90,8 +91,8 @@ export const settings = new Store<Settings>({
     },
     countdownDuration: {
       type: 'integer',
-      minimum: 1,
-      maximum: 10,
+      minimum: 0,
+      maximum: 60,
       default: 3
     },
     audioInputDeviceId: {

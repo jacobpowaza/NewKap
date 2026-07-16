@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {ipcRenderer as ipc} from 'electron-better-ipc';
+import {ipcRenderer as ipc} from '../../../utils/ipc';
 
 import {connect, PreferencesContainer} from '../../../containers';
 

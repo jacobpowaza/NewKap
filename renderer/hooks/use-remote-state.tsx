@@ -1,5 +1,5 @@
 import {useState, useEffect, useRef} from 'react';
-import {ipcRenderer} from 'electron-better-ipc';
+import {ipcRenderer} from '../utils/ipc';
 import {RemoteState, RemoteStateHook} from '../common/types';
 import answerMain from '../utils/answer-main';
 
@@ -41,7 +41,7 @@ const createRemoteStateHook = <Callback extends RemoteState>(
         }), {});
 
         const getState = async () => {
-          const newState = (await ipcRenderer.callMain<string, any>(channelNames.getState, id));
+          const newState = (await ipcRenderer.callMain<string>(channelNames.getState, id));
           setState(newState);
         };
 

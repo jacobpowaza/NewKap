@@ -1,8 +1,8 @@
 'use strict';
 
 import {BrowserWindow, Rectangle} from 'electron';
-import {enable as enableRemote} from '@electron/remote/main';
 import {ipcMain as ipc} from 'electron-better-ipc';
+import path from 'path';
 import {loadRoute} from '../utils/routes';
 import {windowManager} from './manager';
 
@@ -26,14 +26,13 @@ const showDialog = async (options: DialogOptions) => new Promise<number | void>(
     title: '',
     useContentSize: true,
     webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false
-    } as any
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, '..', 'preload.js')
+    }
   });
 
   loadRoute(dialogWindow, 'dialog');
-  enableRemote(dialogWindow.webContents);
 
   let buttons: any[];
   let wasActionTaken;

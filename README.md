@@ -56,7 +56,7 @@ Kap v5 is a repair and modernization release. It keeps the original menu-bar wor
 
 Major changes:
 
-- Electron 43 runtime compatibility work for main, renderer, IPC, and remote bridge paths.
+- Electron 43 runtime compatibility work for main, renderer, IPC, preload bridges, and isolated renderer windows.
 - Repaired the packaged cropper by restoring `electron-next` protocol setup, including the `/_next/*` static asset path that the overlay renderer needs.
 - Stopped invisible transparent cropper windows from intercepting input before the renderer has loaded, painted controls, and declared itself ready.
 - Rebuilt cropper interaction state so drag, resize, pick, active handle, mouse-down state, and stale cursor observers are cleared on every open, close, Escape, blur, and cleanup path.
@@ -64,6 +64,7 @@ Major changes:
 - Made recording shortcuts do recording work. The start shortcut opens Kap when needed and starts recording when the cropper is already open; the stop shortcut stops recording instead of closing the overlay.
 - Fixed Dock/accessory behavior so Kap stays a menu-bar app instead of activating like a normal Dock app.
 - Fixed development and packaged branding so Kap uses Kap naming and icons instead of Electron branding where macOS allows, including bundle metadata and helper naming.
+- Shows Kap in the Dock with the Kap name and icon while the Kapture overlay is open, then returns to menu-bar-only behavior after the overlay closes.
 - Made tray clicks, cropper opens, and cropper cleanup more defensive so repeated open/close cycles do not leave stale windows or duplicate listeners behind.
 - Preserved contextual logging around startup, renderer readiness, cropper gestures, permissions, recording, conversion, and cleanup so future failures are easier to diagnose.
 - Preferences now persist recording, audio, export, notification, launch, countdown, cursor, and shortcut settings.
@@ -168,7 +169,7 @@ When Apple signing and notarization credentials are configured, omit `CSC_IDENTI
 
 Kap has a narrow runtime path:
 
-1. `main/index.ts` sets macOS accessory behavior, prepares the renderer protocol, initializes `@electron/remote`, and wires the tray.
+1. `main/index.ts` sets macOS accessory behavior, prepares the renderer protocol, registers the preload-backed renderer IPC API, and wires the tray.
 2. `main/tray.ts` owns the menu-bar click and recording-state tray behavior.
 3. `main/windows/cropper.ts` checks permissions, creates per-display transparent cropper windows, waits for renderer readiness, and keeps stale overlay windows from accumulating.
 4. `renderer/pages/cropper.js` renders the cropper page and sends a post-paint readiness signal before main enables mouse input.
@@ -176,7 +177,7 @@ Kap has a narrow runtime path:
 6. `main/aperture.ts` starts and stops recording, resolves audio devices, applies quality settings, and opens the editor after capture.
 7. Conversion and export flow through `main/conversion.ts`, `main/converters/*`, and the editor renderer.
 
-Static packaged builds load `renderer/out/*` through the `electron-next` file-protocol mapping. If that mapping is skipped, transparent cropper windows can open without visible controls and intercept input; v5 keeps that setup explicit.
+Static packaged builds load `renderer/out/*` through the `electron-next` file-protocol mapping. If a static page exists, Kap uses it even when Electron's development detector is active; this avoids `ERR_CONNECTION_REFUSED` when no Next.js dev server is running. If that mapping is skipped, transparent cropper windows can open without visible controls and intercept input; v5 keeps that setup explicit.
 
 ## Contributing
 
@@ -205,7 +206,9 @@ Bug reports should include:
 
 ### Kap does not show in the Dock
 
-That is expected. Kap is a menu-bar app and uses macOS accessory activation plus `LSUIElement`.
+That is expected while idle. Kap is normally a menu-bar app and uses macOS accessory activation plus `LSUIElement`.
+
+Kap temporarily appears in the Dock while the Kapture overlay is open so you can switch to or leave the capture view from the Dock. It should use the Kap name and icon, not Electron branding.
 
 ### Screen recording does not start
 
@@ -225,7 +228,7 @@ Check the release notes for signing and notarization status. Unsigned or unnotar
 
 ### Cropper opens but the overlay is invisible or blocks clicks
 
-Run from the terminal with `yarn start` and look for cropper logs. A healthy open shows renderer load followed by cropper readiness. Rebuild the renderer with `yarn build-renderer` if static assets are stale.
+Run from the terminal with `yarn start` and look for cropper logs. A healthy open shows renderer load followed by cropper readiness. Rebuild the renderer with `yarn build-renderer` if static assets are stale. If you see `ERR_CONNECTION_REFUSED` for `http://localhost:8000/cropper`, rebuild the renderer so `renderer/out/cropper.html` exists or run the Next dev server with `yarn dev`.
 
 ### Development still shows an Electron icon
 

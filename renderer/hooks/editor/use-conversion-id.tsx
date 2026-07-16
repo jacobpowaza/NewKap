@@ -1,5 +1,5 @@
 import {CreateExportOptions} from 'common/types';
-import {ipcRenderer} from 'electron-better-ipc';
+import {ipcRenderer} from '../../utils/ipc';
 import {createContext, PropsWithChildren, useContext, useMemo, useState} from 'react';
 
 const ConversionIdContext = createContext<{

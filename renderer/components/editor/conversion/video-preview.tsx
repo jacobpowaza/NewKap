@@ -7,6 +7,7 @@ import {flags} from '../../../common/flags';
 import ReactTooltip from 'react-tooltip';
 import {useEffect, useRef, useState} from 'react';
 import classNames from 'classnames';
+import kap from '../../../utils/kap';
 
 const VideoPreview = ({conversion, cancel, showInFolder}: {conversion: UseConversionState; cancel: () => any; showInFolder: () => any}) => {
   const {conversionId} = useConversionIdContext();
@@ -20,9 +21,7 @@ const VideoPreview = ({conversion, cancel, showInFolder}: {conversion: UseConver
 
   const onDragStart = (event: any) => {
     event.preventDefault();
-    // Has to be the electron one for this
-    const {ipcRenderer} = require('electron');
-    ipcRenderer.send('drag-export', conversionId);
+    kap.ipc.send('drag-export', conversionId);
   };
 
   useEffect(() => {

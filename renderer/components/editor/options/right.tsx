@@ -1,7 +1,7 @@
 import {GearIcon} from '../../../vectors';
 import OptionsContainer from '../options-container';
 import Select from './select';
-import {ipcRenderer as ipc} from 'electron-better-ipc';
+import {ipcRenderer as ipc} from '../../../utils/ipc';
 import useConversionIdContext from 'hooks/editor/use-conversion-id';
 import useEditorWindowState from 'hooks/editor/use-editor-window-state';
 import VideoTimeContainer from '../video-time-container';
@@ -227,8 +227,7 @@ const RightOptions = () => {
 
 export default RightOptions;
 
-// Import electron from 'electron';
-// import React from 'react';
+// Import React from 'react';
 // import PropTypes from 'prop-types';
 
 // import {connect, EditorContainer} from '../../../containers';
@@ -260,7 +259,6 @@ export default RightOptions;
 //           type: 'radio',
 //           checked: openWithApp && app.url === openWithApp.url,
 //           click: () => selectOpenWithApp(app),
-//           icon: remote.nativeImage.createFromDataURL(app.icon).resize({width: 16, height: 16})
 //         }));
 
 //         if (plugin.apps[0].isDefault) {

@@ -321,3 +321,17 @@ export const resumeRecording = async () => {
     cleanup();
   }
 };
+
+export const togglePauseRecording = async () => {
+  if (!past) {
+    return;
+  }
+
+  try {
+    await (await aperture.isPaused() ? resumeRecording() : pauseRecording());
+  } catch (error) {
+    track('recording/pause-toggle/error');
+    showError(error as any, {title: 'Recording error', plugin: undefined});
+    cleanup();
+  }
+};

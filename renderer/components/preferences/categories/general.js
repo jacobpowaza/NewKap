@@ -1,7 +1,7 @@
-import electron from 'electron';
 import React from 'react';
 import PropTypes from 'prop-types';
 import tildify from 'tildify';
+import kap from '../../../utils/kap';
 
 import {connect, PreferencesContainer} from '../../../containers';
 
@@ -10,6 +10,7 @@ import Switch from '../item/switch';
 import Button from '../item/button';
 import Select from '../item/select';
 import ShortcutInput from '../shortcut-input';
+import KeyboardNumberInput from '../../keyboard-number-input';
 
 import Category from './category';
 
@@ -24,12 +25,12 @@ class General extends React.Component {
 
   componentDidMount() {
     this.setState({
-      showCursorSupported: require('../../../utils/electron-remote').require('macos-version').isGreaterThanOrEqualTo('10.13')
+      showCursorSupported: kap.system.isMacosGreaterThanOrEqualTo('10.13')
     });
   }
 
   openKapturesDir = () => {
-    electron.shell.openPath(this.props.kapturesDir);
+    kap.shell.openPath(this.props.kapturesDir);
   };
 
   render() {
@@ -42,9 +43,9 @@ class General extends React.Component {
       record60fps,
       enableShortcuts,
       loopExports,
-      showCountdown,
       countdownDuration,
       toggleSetting,
+      setCountdownDuration,
       toggleRecordAudio,
       audioInputDeviceId,
       setAudioInputDeviceId,
@@ -74,7 +75,6 @@ class General extends React.Component {
     const kapturesDirPath = tildify(kapturesDir);
     const tabIndex = category === 'general' ? 0 : -1;
     const fpsOptions = [{label: '30 FPS', value: false}, {label: '60 FPS', value: true}];
-    const countdownOptions = [1, 3, 5, 10].map(seconds => ({label: `${seconds} sec`, value: seconds}));
     const qualityOptions = [
       {label: 'Standard', value: 'standard'},
       {label: 'High', value: 'high'},
@@ -152,23 +152,22 @@ class General extends React.Component {
           <Switch tabIndex={tabIndex} checked={loopExports} onClick={() => toggleSetting('loopExports')}/>
         </Item>
         <Item
-          key="showCountdown"
-          parentItem
-          title="Show countdown"
-          subtitle="Pause before recording begins"
+          key="countdownDuration"
+          title="Countdown"
+          subtitle="Seconds before recording begins. Use 0 for none."
         >
-          <Switch tabIndex={tabIndex} checked={showCountdown} onClick={() => toggleSetting('showCountdown')}/>
-        </Item>
-        {
-          showCountdown &&
-          <Item key="countdownDuration" subtitle="Countdown duration">
-            <Select
+          <div className="countdown-input">
+            <KeyboardNumberInput
               tabIndex={tabIndex}
-              options={countdownOptions}
-              selected={countdownDuration}
-              onSelect={value => toggleSetting('countdownDuration', value)}/>
-          </Item>
-        }
+              min={0}
+              max={60}
+              maxLength="2"
+              value={countdownDuration}
+              onChange={event => setCountdownDuration(event.currentTarget.value)}
+            />
+            <span>sec</span>
+          </div>
+        </Item>
         <Item
           key="recordAudio"
           parentItem
@@ -277,6 +276,37 @@ class General extends React.Component {
             onClick={() => toggleSetting('lossyCompression')}
           />
         </Item>
+        <style jsx>{`
+          .countdown-input {
+            display: flex;
+            align-items: center;
+            color: var(--subtitle-color);
+            font-size: 1.2rem;
+          }
+
+          .countdown-input :global(input) {
+            width: 56px;
+            height: 32px;
+            margin-right: 8px;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid var(--input-border-color);
+            border-radius: 4px;
+            background: var(--input-background-color);
+            color: var(--title-color);
+            box-shadow: var(--input-shadow);
+            font-size: 1.2rem;
+          }
+
+          .countdown-input :global(input):focus {
+            outline: none;
+            border-color: var(--kap);
+          }
+
+          .countdown-input :global(input):hover {
+            border-color: var(--input-hover-border-color);
+          }
+        `}</style>
       </Category>
     );
   }
@@ -297,8 +327,8 @@ General.propTypes = {
   openOnStartup: PropTypes.bool,
   allowAnalytics: PropTypes.bool,
   loopExports: PropTypes.bool,
-  showCountdown: PropTypes.bool,
   countdownDuration: PropTypes.number,
+  setCountdownDuration: PropTypes.elementType.isRequired,
   pickKapturesDir: PropTypes.elementType.isRequired,
   setOpenOnStartup: PropTypes.elementType.isRequired,
   updateShortcut: PropTypes.elementType.isRequired,
@@ -367,7 +397,8 @@ export default connect(
     pickKapturesDir,
     setOpenOnStartup,
     updateShortcut,
-    toggleShortcuts
+    toggleShortcuts,
+    setCountdownDuration
   }) => ({
     toggleSetting,
     toggleRecordAudio,
@@ -375,6 +406,7 @@ export default connect(
     pickKapturesDir,
     setOpenOnStartup,
     updateShortcut,
-    toggleShortcuts
+    toggleShortcuts,
+    setCountdownDuration
   })
 )(General);

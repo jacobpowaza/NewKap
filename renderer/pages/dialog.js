@@ -2,7 +2,7 @@ import Actions from '../components/dialog/actions';
 import Icon from '../components/dialog/icon';
 import Body from '../components/dialog/body';
 import React, {useState, useEffect, useRef, useCallback} from 'react';
-import {ipcRenderer as ipc} from 'electron-better-ipc';
+import {ipcRenderer as ipc} from '../utils/ipc';
 import answerMain from '../utils/answer-main';
 
 let measureResolve;

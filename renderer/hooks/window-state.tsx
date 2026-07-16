@@ -1,5 +1,5 @@
 import {createContext, useContext, useState, useEffect, ReactNode} from 'react';
-import {ipcRenderer as ipc} from 'electron-better-ipc';
+import {ipcRenderer as ipc} from '../utils/ipc';
 import answerMain from '../utils/answer-main';
 
 const WindowStateContext = createContext<any>(undefined);

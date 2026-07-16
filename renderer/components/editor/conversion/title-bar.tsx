@@ -2,8 +2,7 @@ import TrafficLights from 'components/traffic-lights';
 import {BackPlainIcon, MoreIcon} from 'vectors';
 import {UseConversionState} from 'hooks/editor/use-conversion';
 import {flags} from '../../../common/flags';
-import {MenuItemConstructorOptions} from 'electron';
-const remote = require('../../../utils/electron-remote');
+import kap from '../../../utils/kap';
 import {ExportStatus} from '../../../common/types';
 import {useMemo} from 'react';
 import IconMenu from '../../icon-menu';
@@ -11,7 +10,7 @@ import IconMenu from '../../icon-menu';
 const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: UseConversionState; cancel: () => any; copy: () => any; retry: () => any; showInFolder: () => void}) => {
   const shouldClose = async () => {
     if (conversion.status === ExportStatus.inProgress && !flags.get('backgroundEditorConversion')) {
-      await remote.dialog.showMessageBox(remote.getCurrentWindow(), {
+      await kap.dialog.showMessageBox({
         type: 'info',
         message: 'Your export will continue in the background. You can access it through the Export History window.',
         buttons: ['Ok'],
@@ -24,7 +23,7 @@ const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: 
   };
 
   const menuTemplate = useMemo(() => {
-    const template: MenuItemConstructorOptions[] = [];
+    const template: any[] = [];
 
     if (conversion?.canCopy) {
       template.push({

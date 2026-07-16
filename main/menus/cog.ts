@@ -27,12 +27,36 @@ const getStartRecordingItem = (): MenuOptions[number] => ({
   click: startOrOpenRecording
 });
 
-const getCountdownItem = (): MenuOptions[number] => ({
-  label: 'Countdown',
-  type: 'checkbox',
-  checked: settings.get('showCountdown'),
-  click: menuItem => settings.set('showCountdown', menuItem.checked)
-});
+const setCountdownDuration = (duration: number) => {
+  settings.set('countdownDuration', duration);
+  settings.set('showCountdown', duration > 0);
+};
+
+const getCountdownItem = (): MenuOptions[number] => {
+  const showCountdown = settings.get('showCountdown');
+  const countdownDuration = showCountdown ? settings.get('countdownDuration') : 0;
+
+  return {
+    label: 'Countdown',
+    submenu: [
+      {
+        label: 'None',
+        type: 'radio',
+        checked: countdownDuration === 0,
+        click: () => setCountdownDuration(0)
+      },
+      {
+        type: 'separator'
+      },
+      ...[3, 5, 10].map(duration => ({
+        label: `${duration} seconds`,
+        type: 'radio' as const,
+        checked: countdownDuration === duration,
+        click: () => setCountdownDuration(duration)
+      }))
+    ]
+  };
+};
 
 const getCursorItem = (): MenuOptions[number] => ({
   label: 'Show Cursor',

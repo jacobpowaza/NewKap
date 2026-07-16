@@ -18,10 +18,6 @@ const openExportsWindow = async () => {
       frame: false,
       transparent: true,
       vibrancy: 'window',
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false
-      },
       route: 'exports'
     });
 

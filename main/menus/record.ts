@@ -31,12 +31,14 @@ const getStopRecordingMenuItem = () => ({
 const getPauseRecordingMenuItem = () => ({
   id: MenuItemId.pauseRecording,
   label: 'Pause',
+  accelerator: menuAccelerator(settings.get('shortcuts.pauseRecording')),
   click: pauseRecording
 });
 
 const getResumeRecordingMenuItem = () => ({
   id: MenuItemId.resumeRecording,
   label: 'Resume',
+  accelerator: menuAccelerator(settings.get('shortcuts.pauseRecording')),
   click: resumeRecording
 });
 

@@ -17,9 +17,15 @@ const stopCurrentRecording = () => {
   stopRecording();
 };
 
+const togglePauseCurrentRecording = () => {
+  const {togglePauseRecording} = require('./aperture');
+  togglePauseRecording();
+};
+
 const handlers = new Map<string, () => void>([
   ['triggerCropper', startOrOpenRecording],
-  ['stopRecording', stopCurrentRecording]
+  ['stopRecording', stopCurrentRecording],
+  ['pauseRecording', togglePauseCurrentRecording]
 ]);
 
 const registerShortcut = (shortcut: string, action: () => void) => {

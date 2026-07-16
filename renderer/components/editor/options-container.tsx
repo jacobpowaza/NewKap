@@ -7,6 +7,7 @@ import VideoControlsContainer from './video-controls-container';
 import useEditorOptions, {EditorOptionsState} from 'hooks/editor/use-editor-options';
 import {Format, App} from 'common/types';
 import useEditorWindowState from 'hooks/editor/use-editor-window-state';
+import kap from '../../utils/kap';
 
 type EditService = EditorOptionsState['editServices'][0];
 
@@ -19,7 +20,7 @@ type SharePlugin = {
 const isFormatMuted = (format: Format) => ['gif', 'apng'].includes(format);
 
 const useOptions = () => {
-  const defaultExportFormat = require('../../utils/electron-remote').require('./common/settings').settings.get('defaultExportFormat');
+  const defaultExportFormat = kap.settings.get('defaultExportFormat');
   const {fps: originalFps} = useEditorWindowState();
   const {
     state: {

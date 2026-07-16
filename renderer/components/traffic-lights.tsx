@@ -1,47 +1,50 @@
-const remote = require('../utils/electron-remote');
 import {useState, useEffect, FunctionComponent} from 'react';
+import kap from '../utils/kap';
 
 interface TrafficLightsProps {
   shouldClose?: () => PromiseLike<boolean>;
 }
 
 const TrafficLights: FunctionComponent<TrafficLightsProps> = props => {
-  const currentWindow = remote.getCurrentWindow();
   const [tint, setTint] = useState('blue');
+  const [enabled, setEnabled] = useState({
+    close: true,
+    minimize: true,
+    maximize: true
+  });
 
   useEffect(() => {
-    const setTintColor = () => {
-      setTint(remote.systemPreferences.getUserDefault('AppleAquaColorVariant', 'string') === '6' ? 'graphite' : 'blue');
+    const updateCapabilities = async () => {
+      setEnabled(await kap.window.getCapabilities());
     };
 
-    const tintSubscription = remote.systemPreferences.subscribeNotification('AppleAquaColorVariantChanged', setTintColor);
+    const setTintColor = () => {
+      setTint(kap.system.getUserDefault('AppleAquaColorVariant', 'string') === '6' ? 'graphite' : 'blue');
+    };
+
+    const removeTintSubscription = kap.system.onAquaColorVariantChanged(setTintColor);
     setTintColor();
+    updateCapabilities();
 
     return () => {
-      remote.systemPreferences.unsubscribeNotification(tintSubscription);
+      removeTintSubscription();
     };
   }, []);
-
-  const enabled = {
-    close: currentWindow.closable,
-    minimize: currentWindow.minimizable,
-    maximize: currentWindow.maximizable
-  };
 
   const getClassName = (name: string) => `traffic-light ${name}${enabled[name] ? '' : ' disabled'}`;
 
   const close = async () => {
     if (!props.shouldClose || await props.shouldClose()) {
-      currentWindow.close();
+      void kap.window.close();
     }
   };
 
   const minimize = () => {
-    currentWindow.minimize();
+    void kap.window.minimize();
   };
 
   const maximize = () => {
-    currentWindow.setFullScreen(!currentWindow.isFullScreen());
+    void kap.window.toggleFullScreen();
   };
 
   return (

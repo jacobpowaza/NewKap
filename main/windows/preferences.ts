@@ -1,7 +1,7 @@
 import {BrowserWindow} from 'electron';
-import {enable as enableRemote} from '@electron/remote/main';
 import {promisify} from 'util';
 import pEvent from 'p-event';
+import path from 'path';
 
 import {ipcMain as ipc} from 'electron-better-ipc';
 import {loadRoute} from '../utils/routes';
@@ -39,10 +39,10 @@ const openPrefsWindow = async (options?: PreferencesWindowOptions) => {
     transparent: true,
     vibrancy: 'window',
     webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false
-    } as any
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, '..', 'preload.js')
+    }
   });
 
   const titlebarHeight = 85;
@@ -57,7 +57,6 @@ const openPrefsWindow = async (options?: PreferencesWindowOptions) => {
   });
 
   loadRoute(prefsWindow, 'preferences');
-  enableRemote(prefsWindow.webContents);
 
   await pEvent(prefsWindow.webContents, 'did-finish-load');
 

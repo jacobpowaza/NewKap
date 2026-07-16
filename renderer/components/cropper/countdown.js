@@ -9,7 +9,7 @@ const Countdown = ({countdown, countdownValue}) => {
 
   return (
     <div className="countdown-overlay">
-      <div className="countdown-number">{countdownValue}</div>
+      <div key={countdownValue} className="countdown-number">{countdownValue}</div>
       <style jsx>{`
         .countdown-overlay {
           position: fixed;
@@ -29,17 +29,25 @@ const Countdown = ({countdown, countdownValue}) => {
           font-weight: 700;
           color: white;
           text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-          animation: pulse 1s ease-in-out;
+          animation: countdown-pulse 1s ease-in-out both;
         }
 
-        @keyframes pulse {
+        @keyframes countdown-pulse {
           0% {
             transform: scale(0.5);
             opacity: 0;
           }
-          100% {
+          35% {
             transform: scale(1);
             opacity: 1;
+          }
+          75% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1.25);
+            opacity: 0;
           }
         }
       `}</style>

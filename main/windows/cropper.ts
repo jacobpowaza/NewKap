@@ -1,6 +1,6 @@
 import {windowManager} from './manager';
-import {BrowserWindow, systemPreferences, dialog, screen, Display, app, globalShortcut, ipcMain} from 'electron';
-import {enable as enableRemote} from '@electron/remote/main';
+import {BrowserWindow, systemPreferences, dialog, screen, Display, app, globalShortcut, ipcMain, nativeImage} from 'electron';
+import path from 'path';
 
 import {settings} from '../common/settings';
 import {hasMicrophoneAccess, ensureMicrophonePermissions, openSystemPreferences, ensureScreenCapturePermissions} from '../common/system-permissions';
@@ -16,6 +16,24 @@ let closeShortcutsRegistered = false;
 let openSessionId = 0;
 
 const closeShortcutAccelerators = ['Escape'];
+
+const setDockVisible = (visible: boolean) => {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  (app as any).__kapDockVisible = visible;
+
+  if (visible) {
+    app.setName('Kap');
+    app.dock?.setIcon(nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.icns')));
+    app.setActivationPolicy('regular');
+    app.dock?.show();
+  } else {
+    app.dock?.hide();
+    app.setActivationPolicy('accessory');
+  }
+};
 
 const unregisterCloseShortcuts = () => {
   if (!closeShortcutsRegistered) {
@@ -66,12 +84,11 @@ const createCropper = (display: Display, activeDisplayId?: number, sessionId = o
     skipTaskbar: true,
     show: false,
     webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false
-    } as any
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, '..', 'preload.js')
+    }
   });
-  enableRemote(cropper.webContents);
   cropper.setIgnoreMouseEvents(true);
 
   loadRoute(cropper, 'cropper').catch(error => {
@@ -139,6 +156,7 @@ const closeAllCroppers = () => {
   screen.removeAllListeners('display-removed');
   screen.removeAllListeners('display-added');
   unregisterCloseShortcuts();
+  setDockVisible(false);
 
   for (const cropper of croppers.values()) {
     if (!cropper.isDestroyed()) {
@@ -163,6 +181,7 @@ const destroyAllCroppers = () => {
   screen.removeAllListeners('display-removed');
   screen.removeAllListeners('display-added');
   unregisterCloseShortcuts();
+  setDockVisible(false);
 
   for (const [id, cropper] of croppers) {
     cropper.destroy();
@@ -324,6 +343,7 @@ const openCropperWindow = async () => {
       }
 
       isOpen = true;
+      setDockVisible(true);
       openSessionId += 1;
       const sessionId = openSessionId;
 
@@ -335,10 +355,6 @@ const openCropperWindow = async () => {
         cropper.setIgnoreMouseEvents(true);
         cropper.setVisibleOnAllWorkspaces(false);
         cropper.showInactive();
-      }
-
-      if (process.platform === 'darwin') {
-        app.setActivationPolicy('accessory');
       }
 
       croppers.get(activeDisplayId)?.focus();
