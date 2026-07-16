@@ -73,6 +73,7 @@ export default class CropperPage extends React.Component {
   }
 
   componentDidMount() {
+    kap.cropper.rendererReady({sessionId: this.cropperSessionId});
     document.addEventListener('keydown', this.handleKeyEvent);
     document.addEventListener('keyup', this.handleKeyEvent);
     window.addEventListener('mouseup', this.handleMouseUp);
