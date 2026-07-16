@@ -19,6 +19,11 @@ Kap is a lightweight macOS screen recorder that lives in the menu bar. This comm
 
 Download Kap v5 from the [GitHub releases page](https://github.com/jacobpowaza/NewKap/releases/latest).
 
+Release notes live in two places:
+
+- [Kap v5 GitHub release](https://github.com/jacobpowaza/NewKap/releases/tag/v5.0.0)
+- [Repository release notes](docs/releases/v5.0.0.md)
+
 Choose the DMG for your Mac:
 
 | Mac type | Download |
@@ -49,24 +54,32 @@ Kap is designed for short product demos, bug reports, design reviews, documentat
 
 Kap v5 is a repair and modernization release. It keeps the original menu-bar workflow, but fixes the pieces that made recent builds slow, invisible, or incorrectly branded.
 
-Highlights:
+Major changes:
 
 - Electron 43 runtime compatibility work for main, renderer, IPC, and remote bridge paths.
-- Repaired `electron-next` protocol setup so packaged cropper windows can load `/_next/*` renderer assets.
-- Transparent cropper windows no longer appear before the renderer has loaded and painted controls.
-- Cropper drag, resize, and pick state is reset on every open and close.
-- Cursor movement alone cannot move or resize the crop selection.
-- Start and stop recording shortcuts are real recording actions, not just overlay open/close actions.
-- Development and packaged builds use Kap naming and icons instead of Electron branding where macOS allows.
+- Repaired the packaged cropper by restoring `electron-next` protocol setup, including the `/_next/*` static asset path that the overlay renderer needs.
+- Stopped invisible transparent cropper windows from intercepting input before the renderer has loaded, painted controls, and declared itself ready.
+- Rebuilt cropper interaction state so drag, resize, pick, active handle, mouse-down state, and stale cursor observers are cleared on every open, close, Escape, blur, and cleanup path.
+- Fixed the cursor-following crop bug: cursor movement alone cannot move or resize the crop selection anymore.
+- Made recording shortcuts do recording work. The start shortcut opens Kap when needed and starts recording when the cropper is already open; the stop shortcut stops recording instead of closing the overlay.
+- Fixed Dock/accessory behavior so Kap stays a menu-bar app instead of activating like a normal Dock app.
+- Fixed development and packaged branding so Kap uses Kap naming and icons instead of Electron branding where macOS allows, including bundle metadata and helper naming.
+- Made tray clicks, cropper opens, and cropper cleanup more defensive so repeated open/close cycles do not leave stale windows or duplicate listeners behind.
+- Preserved contextual logging around startup, renderer readiness, cropper gestures, permissions, recording, conversion, and cleanup so future failures are easier to diagnose.
 - Preferences now persist recording, audio, export, notification, launch, countdown, cursor, and shortcut settings.
 - Tray quick settings expose common capture controls without opening Preferences.
-- Contextual error reporting is preserved at renderer, IPC, permission, conversion, and recording boundaries.
 
 Performance improvements verified during development:
 
-- Startup now skips unnecessary development-server and precompile work when a static renderer build exists.
-- The renderer protocol mapping is still initialized for static builds, which avoids the invisible-overlay failure.
-- Local verification in this fork reached tray-ready in about 1.5 seconds where the old development path took roughly 30 seconds. Treat this as an approximate development-path measurement, not a universal benchmark.
+- The previous development path could spend roughly 30 seconds preparing startup/cropper state before tray and overlay readiness.
+- The current static-renderer development path reached tray-ready in about 1.5 seconds in local verification on this fork.
+- The improvement comes from skipping unnecessary Next.js development-server/precompile work when static renderer output already exists, while still initializing the file-protocol mapping required for packaged renderer assets.
+- These are approximate local development measurements, not a universal benchmark. They are included because the startup delay was one of the release-critical regressions v5 addressed.
+
+Testing note:
+
+- Runtime verification for this release was performed on an Intel Mac.
+- The arm64 package is built and statically verified for Apple Silicon. Reports from M1, M2, M3, M4, and newer Macs are especially useful.
 
 ## Features
 
