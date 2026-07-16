@@ -33,16 +33,12 @@ const Countdown = ({countdown, countdownValue}) => {
 
         @keyframes pulse {
           0% {
-            transform: scale(1.5);
-            opacity: 0.5;
-          }
-          50% {
-            transform: scale(1);
-            opacity: 1;
+            transform: scale(0.5);
+            opacity: 0;
           }
           100% {
-            transform: scale(0.8);
-            opacity: 0.3;
+            transform: scale(1);
+            opacity: 1;
           }
         }
       `}</style>

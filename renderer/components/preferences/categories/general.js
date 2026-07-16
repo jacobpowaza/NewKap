@@ -24,7 +24,7 @@ class General extends React.Component {
 
   componentDidMount() {
     this.setState({
-      showCursorSupported: electron.remote.require('macos-version').isGreaterThanOrEqualTo('10.13')
+      showCursorSupported: require('../../../utils/electron-remote').require('macos-version').isGreaterThanOrEqualTo('10.13')
     });
   }
 
@@ -42,6 +42,7 @@ class General extends React.Component {
       record60fps,
       enableShortcuts,
       loopExports,
+      showCountdown,
       toggleSetting,
       toggleRecordAudio,
       audioInputDeviceId,
@@ -132,6 +133,13 @@ class General extends React.Component {
           <Switch tabIndex={tabIndex} checked={loopExports} onClick={() => toggleSetting('loopExports')}/>
         </Item>
         <Item
+          key="showCountdown"
+          title="Show countdown"
+          subtitle="Display a 3-second countdown before recording"
+        >
+          <Switch tabIndex={tabIndex} checked={showCountdown} onClick={() => toggleSetting('showCountdown')}/>
+        </Item>
+        <Item
           key="recordAudio"
           parentItem
           title="Audio recording"
@@ -220,6 +228,7 @@ General.propTypes = {
   openOnStartup: PropTypes.bool,
   allowAnalytics: PropTypes.bool,
   loopExports: PropTypes.bool,
+  showCountdown: PropTypes.bool,
   pickKapturesDir: PropTypes.elementType.isRequired,
   setOpenOnStartup: PropTypes.elementType.isRequired,
   updateShortcut: PropTypes.elementType.isRequired,
@@ -244,6 +253,7 @@ export default connect(
     openOnStartup,
     allowAnalytics,
     loopExports,
+    showCountdown,
     category,
     lossyCompression,
     shortcuts,
@@ -260,6 +270,7 @@ export default connect(
     openOnStartup,
     allowAnalytics,
     loopExports,
+    showCountdown,
     category,
     lossyCompression,
     shortcuts,

@@ -12,7 +12,8 @@ export const useConfirmation = (
   options: UseConfirmationOptions
 ) => {
   return useCallback(() => {
-    const {dialog, remote} = require('electron-util').api;
+    const {dialog} = require('electron-util').api;
+    const remote = require('../utils/electron-remote');
 
     const buttonIndex = dialog.showMessageBoxSync(remote.getCurrentWindow(), {
       type: 'question',

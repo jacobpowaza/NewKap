@@ -1,4 +1,5 @@
 import electron, {app, BrowserWindow, Menu} from 'electron';
+import {enable as enableRemote} from '@electron/remote/main';
 import {ipcMain as ipc} from 'electron-better-ipc';
 import pEvent from 'p-event';
 import {customApplicationMenu, defaultApplicationMenu, MenuModifier} from '../menus/application';
@@ -54,12 +55,14 @@ export default class KapWindow<State = any> {
         enableRemoteModule: true,
         contextIsolation: false,
         ...rest.webPreferences
-      },
+      } as any,
       show: false
     });
 
     this.id = this.browserWindow.id;
     KapWindow.windows.set(this.id, this);
+
+    enableRemote(this.browserWindow.webContents);
 
     this.cleanupMethods = [];
     this.options = {
@@ -125,8 +128,8 @@ export default class KapWindow<State = any> {
     KapWindow.windows.set(this.id, this);
 
     this.browserWindow.on('show', () => {
-      if (this.options.dock && !app.dock.isVisible) {
-        app.dock.show();
+      if (this.options.dock && !app.dock?.isVisible()) {
+        app.dock?.show();
       }
     });
 

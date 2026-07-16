@@ -25,6 +25,7 @@ interface Settings {
   loopExports: boolean;
   recordKeyboardShortcut: boolean;
   recordAudio: boolean;
+  showCountdown: boolean;
   audioInputDeviceId?: string;
   cropperShortcut: {
     metaKey: boolean;
@@ -74,6 +75,10 @@ export const settings = new Store<Settings>({
     recordAudio: {
       type: 'boolean',
       default: false
+    },
+    showCountdown: {
+      type: 'boolean',
+      default: true
     },
     audioInputDeviceId: {
       type: [

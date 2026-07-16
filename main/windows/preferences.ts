@@ -1,4 +1,5 @@
 import {BrowserWindow} from 'electron';
+import {enable as enableRemote} from '@electron/remote/main';
 import {promisify} from 'util';
 import pEvent from 'p-event';
 
@@ -41,7 +42,7 @@ const openPrefsWindow = async (options?: PreferencesWindowOptions) => {
       nodeIntegration: true,
       enableRemoteModule: true,
       contextIsolation: false
-    }
+    } as any
   });
 
   const titlebarHeight = 85;
@@ -52,6 +53,7 @@ const openPrefsWindow = async (options?: PreferencesWindowOptions) => {
   });
 
   loadRoute(prefsWindow, 'preferences');
+  enableRemote(prefsWindow.webContents);
 
   await pEvent(prefsWindow.webContents, 'did-finish-load');
 

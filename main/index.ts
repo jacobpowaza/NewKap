@@ -1,5 +1,7 @@
 import {app, BrowserWindow, Tray, Menu, dialog} from 'electron';
 import path from 'path';
+import fs from 'fs';
+import {initialize as initializeRemote} from '@electron/remote/main';
 import {mark} from './utils/perf';
 
 mark('main module entered');
@@ -80,14 +82,18 @@ app.on('will-finish-launching', () => {
 });
 
 app.on('window-all-closed', () => {
-  app.dock.hide();
+  app.dock?.hide();
 });
 
 (async () => {
   await app.whenReady();
   mark('app.whenReady resolved');
 
-  app.dock.hide();
+  // Initialize @electron/remote compatibility bridge.
+  // Each BrowserWindow must also call enable() on its webContents.
+  initializeRemote();
+
+  app.dock?.hide();
   app.setAboutPanelOptions({copyright: 'Copyright © NewKap Contributors'});
 
   const tray = new Tray(path.join(__dirname, '..', 'static', 'menubarDefaultTemplate.png'));
@@ -116,27 +122,37 @@ app.on('window-all-closed', () => {
 
   const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
+  // Auto-detect production build — if static output exists, skip the
+  // Next.js dev server entirely.  This eliminates the ~16s prepareNext
+  // delay, the ~15s pre-compilation wait, and the fsevents crash on
+  // Ctrl+C (no file-watcher thread).
+  const staticDir = path.join(__dirname, '..', 'renderer', 'out');
+  const hasStaticBuild = fs.existsSync(path.join(staticDir, 'cropper.html'));
+  if (hasStaticBuild) {
+    process.env.ELECTRON_IS_DEV = '0';
+  }
+
   setImmediate(async () => {
     require('./utils/errors').setupErrorHandling();
     await tick();
 
     require('./utils/protocol').setupProtocol();
 
-    const prepareNext = require('electron-next');
-    await prepareNext('./renderer');
+    if (!hasStaticBuild) {
+      const prepareNext = require('electron-next');
+      await prepareNext('./renderer');
 
-    // Pre-compile the cropper page by loading it in a hidden window.
-    // We AWAIT this before trayReady so the main process is never
-    // busy compiling when the user interacts (prevents spinner cursor
-    // on countdown, instant first open).
-    const {is: isDev} = require('electron-util');
-    if (isDev.development) {
-      const preloadWin = new BrowserWindow({
-        show: false,
-        webPreferences: {nodeIntegration: true, enableRemoteModule: true, contextIsolation: false}
-      });
-      await preloadWin.loadURL('http://localhost:8000/cropper');
-      preloadWin.destroy();
+      // Pre-compile the cropper page by loading it in a hidden window.
+      // Only needed in dev mode (static builds serve instantly).
+      const {is: isDev} = require('electron-util');
+      if (isDev.development) {
+        const preloadWin = new BrowserWindow({
+          show: false,
+          webPreferences: {nodeIntegration: true, enableRemoteModule: true, contextIsolation: false} as any
+        });
+        await preloadWin.loadURL('http://localhost:8000/cropper');
+        preloadWin.destroy();
+      }
     }
 
     await tick();

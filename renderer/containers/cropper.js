@@ -1,4 +1,3 @@
-import electron from 'electron';
 import nearestNormalAspectRatio from 'nearest-normal-aspect-ratio';
 import {Container} from 'unstated';
 
@@ -35,7 +34,7 @@ export const findRatioForSize = (width, height) => {
 };
 
 export default class CropperContainer extends Container {
-  remote = electron.remote || false;
+  remote = require('../utils/electron-remote');
 
   constructor() {
     super();
@@ -529,6 +528,12 @@ export default class CropperContainer extends Container {
       return;
     }
 
+    // Skip countdown if disabled in settings
+    if (!this.settings.get('showCountdown', true)) {
+      this.doStartRecording();
+      return;
+    }
+
     this.setState({countdownValue: 3, countdown: true});
 
     const tick = () => {
@@ -553,7 +558,7 @@ export default class CropperContainer extends Container {
       return;
     }
 
-    const {remote} = electron;
+    const remote = require('../utils/electron-remote');
     const {startRecording} = remote.require('./aperture');
 
     this.willStartRecording();

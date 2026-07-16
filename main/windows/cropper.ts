@@ -1,5 +1,6 @@
 import {windowManager} from './manager';
 import {BrowserWindow, systemPreferences, dialog, screen, Display, app} from 'electron';
+import {enable as enableRemote} from '@electron/remote/main';
 
 import {settings} from '../common/settings';
 import {hasMicrophoneAccess, ensureMicrophonePermissions, openSystemPreferences, ensureScreenCapturePermissions} from '../common/system-permissions';
@@ -32,10 +33,11 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
       nodeIntegration: true,
       enableRemoteModule: true,
       contextIsolation: false
-    }
+    } as any
   });
 
   loadRoute(cropper, 'cropper');
+  enableRemote(cropper.webContents);
 
   cropper.setAlwaysOnTop(true, 'screen-saver', 1);
 
@@ -337,7 +339,7 @@ app.on('before-quit', destroyAllCroppers);
 
 app.on('browser-window-created', () => {
   if (!isCropperOpen()) {
-    app.dock.show();
+    app.dock?.show();
   }
 });
 
