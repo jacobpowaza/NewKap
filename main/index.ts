@@ -1,4 +1,4 @@
-import {app, Tray, dialog} from 'electron';
+import {app, Tray, Menu, dialog} from 'electron';
 import path from 'path';
 import {mark} from './utils/perf';
 
@@ -106,6 +106,14 @@ app.on('window-all-closed', () => {
     windowManager.cropper?.open();
   });
 
+  tray.on('right-click', () => {
+    if (!trayReady) {
+      tray.popUpContextMenu(Menu.buildFromTemplate([
+        {label: 'NewKap is loading…', enabled: false}
+      ]));
+    }
+  });
+
   const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
   setImmediate(async () => {
@@ -116,6 +124,16 @@ app.on('window-all-closed', () => {
 
     const prepareNext = require('electron-next');
     await prepareNext('./renderer');
+
+    // Eagerly pre-compile pages so they're cached before user interaction
+    const {is: isDev} = require('electron-util');
+    if (isDev.development) {
+      const http = require('http');
+      for (const page of ['cropper', 'preferences', 'config']) {
+        http.get(`http://localhost:8000/${page}`, (res: any) => res.resume()).on('error', () => {});
+      }
+    }
+
     await tick();
 
     require('./remote-states').setupRemoteStates();
