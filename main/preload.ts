@@ -49,7 +49,7 @@ contextBridge.exposeInMainWorld('kap', {
   },
   cropper: {
     controlsReady: (payload: {sessionId?: number}) => ipcRenderer.send('cropper-controls-ready', payload),
-    rendererReady: (payload: {sessionId?: number}) => ipcRenderer.send('cropper-renderer-ready', payload),
+    rendererReady: (payload?: {sessionId?: number}) => ipcRenderer.send('cropper-renderer-ready', payload),
     startRecording: (options: any) => invoke('kap:cropper:start-recording', options)
   },
   dialog: {

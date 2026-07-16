@@ -354,13 +354,13 @@ const openCropperWindow = async () => {
       }
 
       isOpen = true;
-      setDockVisible(true);
       openSessionId += 1;
       const sessionId = openSessionId;
 
       const activeDisplayId = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id;
 
       await ensureCroppers(activeDisplayId, sessionId);
+      setDockVisible(true);
 
       for (const cropper of croppers.values()) {
         cropper.setIgnoreMouseEvents(true);
@@ -525,7 +525,7 @@ const handleRendererReady = (event: Electron.IpcMainEvent, payload?: {sessionId?
     return;
   }
 
-  if (payload?.sessionId !== undefined && payload.sessionId !== displayState.sessionId) {
+  if (typeof payload?.sessionId === 'number' && payload.sessionId !== displayState.sessionId) {
     return;
   }
 
