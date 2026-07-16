@@ -10,10 +10,9 @@ import {template} from 'lodash';
 import IconMenu from '../../icon-menu';
 
 const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: UseConversionState; cancel: () => any; copy: () => any; retry: () => any; showInFolder: () => void}) => {
-  const {api} = require('electron-util');
   const shouldClose = async () => {
     if (conversion.status === ExportStatus.inProgress && !flags.get('backgroundEditorConversion')) {
-      await api.dialog.showMessageBox(remote.getCurrentWindow(), {
+      await remote.dialog.showMessageBox(remote.getCurrentWindow(), {
         type: 'info',
         message: 'Your export will continue in the background. You can access it through the Export History window.',
         buttons: ['Ok'],

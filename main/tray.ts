@@ -9,20 +9,43 @@ import {track} from './common/analytics';
 import {openFiles} from './utils/open-files';
 import {windowManager} from './windows/manager';
 import {pauseRecording, resumeRecording, stopRecording} from './aperture';
+import {settings} from './common/settings';
+import {recordingHistory} from './recording-history';
 
 let tray: Tray;
 let trayAnimation: NodeJS.Timeout | undefined;
 let cachedCogMenu: Menu;
+let unsubscribeFromSettings: (() => void) | undefined;
+let unsubscribeFromHistory: (() => void) | undefined;
 
-const openCropperWindow = () => windowManager.cropper?.open();
+const refreshCogMenu = async () => {
+  try {
+    cachedCogMenu = await getCogMenuAsync();
+  } catch (error) {
+    console.error('[tray] failed to refresh menu', error);
+  }
+};
+
+const openCropperWindow = async () => {
+  const openPromise = windowManager.cropper?.open();
+  if (!openPromise) {
+    console.error('[tray] cropper manager is not registered');
+    return;
+  }
+
+  try {
+    await openPromise;
+  } catch (error) {
+    console.error('[tray] failed to open cropper', error);
+  }
+};
 
 const openContextMenu = () => {
   if (cachedCogMenu) {
     tray.popUpContextMenu(cachedCogMenu);
   }
-  getCogMenuAsync().then(menu => {
-    cachedCogMenu = menu;
-  }).catch(() => {});
+
+  refreshCogMenu();
 };
 
 const openRecordingContextMenu = () => {
@@ -34,11 +57,7 @@ const openPausedContextMenu = () => {
 };
 
 export const initializeTray = (existingTray?: Tray) => {
-  if (existingTray) {
-    tray = existingTray;
-  } else {
-    tray = new Tray(path.join(__dirname, '..', 'static', 'menubarDefaultTemplate.png'));
-  }
+  tray = existingTray ? existingTray : new Tray(path.join(__dirname, '..', 'static', 'menubarDefaultTemplate.png'));
 
   cachedCogMenu = Menu.buildFromTemplate(buildBasicCogMenu());
 
@@ -49,9 +68,12 @@ export const initializeTray = (existingTray?: Tray) => {
     openFiles(...files);
   });
 
-  getCogMenuAsync().then(menu => {
-    cachedCogMenu = menu;
-  }).catch(() => {});
+  refreshCogMenu();
+
+  unsubscribeFromSettings?.();
+  unsubscribeFromSettings = settings.onDidAnyChange(refreshCogMenu);
+  unsubscribeFromHistory?.();
+  unsubscribeFromHistory = recordingHistory.onDidChange('recordings', refreshCogMenu);
 
   return tray;
 };
@@ -82,6 +104,7 @@ export const resetTray = () => {
   tray.setImage(path.join(__dirname, '..', 'static', 'menubarDefaultTemplate.png'));
   tray.on('click', openCropperWindow);
   tray.on('right-click', openContextMenu);
+  refreshCogMenu();
 };
 
 export const setRecordingTray = () => {

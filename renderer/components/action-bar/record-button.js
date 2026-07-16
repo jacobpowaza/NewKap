@@ -1,4 +1,3 @@
-import electron from 'electron';
 import React, {useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
@@ -28,14 +27,6 @@ const getMediaNode = async deviceId => new Promise((resolve, reject) => {
 
 const RecordButton = ({
   cropperExists,
-  x,
-  y,
-  width,
-  height,
-  screenWidth,
-  screenHeight,
-  displayId,
-  willStartRecording,
   recordAudio,
   audioInputDeviceId,
   startCountdown
@@ -54,7 +45,12 @@ const RecordButton = ({
         javascriptNode.onaudioprocess = () => {
           const array = new Uint8Array(analyser.frequencyBinCount);
           analyser.getByteFrequencyData(array);
-          const avg = array.reduce((p, c) => p + c) / array.length;
+          let total = 0;
+          for (const value of array) {
+            total += value;
+          }
+
+          const avg = total / array.length;
           if (avg >= 36) {
             setShowFirstRipple(true);
             setShowSecondRipple(true);
@@ -204,14 +200,6 @@ const RecordButton = ({
 
 RecordButton.propTypes = {
   cropperExists: PropTypes.bool,
-  x: PropTypes.number,
-  y: PropTypes.number,
-  width: PropTypes.number,
-  height: PropTypes.number,
-  screenWidth: PropTypes.number,
-  screenHeight: PropTypes.number,
-  displayId: PropTypes.number,
-  willStartRecording: PropTypes.elementType,
   recordAudio: PropTypes.bool,
   audioInputDeviceId: PropTypes.string,
   startCountdown: PropTypes.func
@@ -219,6 +207,6 @@ RecordButton.propTypes = {
 
 export default connect(
   [CropperContainer],
-  ({x, y, width, height, screenWidth, screenHeight, displayId, recordAudio, audioInputDeviceId}) => ({x, y, width, height, screenWidth, screenHeight, displayId, recordAudio, audioInputDeviceId}),
-  ({willStartRecording, startCountdown}) => ({willStartRecording, startCountdown})
+  ({recordAudio, audioInputDeviceId}) => ({recordAudio, audioInputDeviceId}),
+  ({startCountdown}) => ({startCountdown})
 )(RecordButton);

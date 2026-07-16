@@ -1,27 +1,32 @@
 {
-  "name": "newkap",
-  "productName": "NewKap",
+  "name": "kap",
+  "productName": "Kap",
   "version": "4.0.12",
   "description": "Community-driven Kap fork focused on reliability and community maintenance",
   "license": "MIT",
   "repository": "MuntasirMalek/NewKap",
   "homepage": "https://github.com/MuntasirMalek/NewKap",
   "author": {
-    "name": "NewKap Community",
+    "name": "Kap Contributors",
     "email": "muntasirmalek@users.noreply.github.com",
     "url": "https://github.com/MuntasirMalek/NewKap"
   },
   "private": true,
+  "engines": {
+    "node": ">=20 <23",
+    "yarn": "1.22.x"
+  },
   "main": "dist-js/index.js",
   "scripts": {
     "lint": "xo",
     "lint:fix": "xo --fix",
+    "typecheck": "tsc --noEmit",
     "test:main": "TS_NODE_PROJECT=test/tsconfig.json ava",
     "test:ci": "yarn test:main --tap | tap-xunit > ~/reports/ava.xml",
     "test": "yarn lint && yarn test:main",
-    "start": "tsc && run-electron .",
+    "start": "tsc && node scripts/run-electron.js .",
     "build-main": "tsc",
-    "build-renderer": "next build renderer && next export renderer",
+    "build-renderer": "node --openssl-legacy-provider node_modules/next/dist/bin/next build renderer && node --openssl-legacy-provider node_modules/next/dist/bin/next export renderer",
     "build": "yarn build-main && yarn build-renderer",
     "dist": "npm run build && electron-builder",
     "pack": "npm run build && electron-builder --dir",
@@ -85,6 +90,7 @@
     "react-tooltip": "^4.2.19",
     "read-pkg": "^5.2.0",
     "semver": "^7.3.4",
+    "serialize-error": "^5.0.0",
     "string-math": "^1.2.2",
     "tempy": "^1.0.0",
     "tildify": "^2.0.0",
@@ -243,7 +249,7 @@
     }
   },
   "build": {
-    "appId": "com.newkap.app",
+    "appId": "com.wulkano.kap",
     "afterSign": "electron-builder-notarize",
     "protocols": {
       "name": "kap",
@@ -258,6 +264,7 @@
       "renderer/out"
     ],
     "mac": {
+      "icon": "build/icon.icns",
       "electronUpdaterCompatibility": ">=2.16",
       "category": "public.app-category.productivity",
       "minimumSystemVersion": "10.12.0",
@@ -266,8 +273,10 @@
       "entitlements": "./build/entitlements.mac.inherit.plist",
       "extendInfo": {
         "LSUIElement": true,
-        "NSMicrophoneUsageDescription": "NewKap needs access to the microphone to be able to record audio for screen recordings.",
-        "NSCameraUsageDescription": "A NewKap plugin wants to use the camera.",
+        "CFBundleDisplayName": "Kap",
+        "CFBundleName": "Kap",
+        "NSMicrophoneUsageDescription": "Kap needs access to the microphone to record audio with screen recordings.",
+        "NSCameraUsageDescription": "A Kap plugin wants to use the camera.",
         "NSUserNotificationAlertStyle": "alert",
         "CFBundleDocumentTypes": [
           {

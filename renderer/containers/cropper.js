@@ -76,7 +76,7 @@ export default class CropperContainer extends Container {
     });
   }
 
-  setDisplay = display => {
+  setDisplay = (display, {isReady = true} = {}) => {
     const {width: screenWidth, height: screenHeight, isActive, id, cropper = {}} = display;
     const {x, y, width, height, ratio = [4, 3]} = cropper;
 
@@ -85,7 +85,7 @@ export default class CropperContainer extends Container {
       screenWidth,
       screenHeight,
       isActive,
-      isReady: true,
+      isReady,
       displayId: id,
       x: x || screenWidth / 2,
       y: y || screenHeight / 2,
@@ -97,6 +97,10 @@ export default class CropperContainer extends Container {
       countdownValue: 0
     });
     this.actionBarContainer.setInputValues({width, height});
+  };
+
+  setReady = isReady => {
+    this.setState({isReady});
   };
 
   willStartRecording = () => {
@@ -355,6 +359,7 @@ export default class CropperContainer extends Container {
     this.setBounds(updates, {save: false});
   };
 
+  // eslint-disable-next-line complexity
   resize = ({pageX, pageY}) => {
     const {currentHandle, x, y, width, height, original, ratio, screenWidth, screenHeight, resizeFromCenter} = this.state;
     const {top, bottom, left, right} = currentHandle;
@@ -523,7 +528,7 @@ export default class CropperContainer extends Container {
       return;
     }
 
-    const {x, y, width, height, screenWidth, screenHeight, displayId} = this.state;
+    const {width, height} = this.state;
     if (!width || !height) {
       return;
     }
@@ -534,7 +539,8 @@ export default class CropperContainer extends Container {
       return;
     }
 
-    this.setState({countdownValue: 3, countdown: true});
+    const countdownDuration = this.settings.get('countdownDuration', 3);
+    this.setState({countdownValue: countdownDuration, countdown: true});
 
     const tick = () => {
       const {countdownValue} = this.state;

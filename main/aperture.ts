@@ -9,7 +9,7 @@ import {showError} from './utils/errors';
 import {RecordServiceContext, RecordServiceState} from './plugins/service-context';
 import {setCurrentRecording, updatePluginState, stopCurrentRecording} from './recording-history';
 import {Recording} from './video';
-import {ApertureOptions, StartRecordingOptions} from './common/types';
+import {ApertureOptions, Encoding, StartRecordingOptions} from './common/types';
 import {InstalledPlugin} from './plugins/plugin';
 import {RecordService, RecordServiceHook} from './plugins/service';
 import {getCurrentDurationStart, getOverallDuration, setCurrentDurationStart, setOverallDuration} from './utils/track-duration';
@@ -17,6 +17,11 @@ import {getCurrentDurationStart, getOverallDuration, setCurrentDurationStart, se
 const createAperture = require('aperture');
 let aperture = createAperture();
 const MAX_RECORDING_RETRIES = 2;
+const recordingCodecs = {
+  standard: Encoding.h264,
+  high: Encoding.hevc,
+  maximum: Encoding.proRes422
+};
 
 let recordingPlugins: Array<{plugin: InstalledPlugin; service: RecordService}> = [];
 const serviceState = new Map<string, RecordServiceState>();
@@ -56,7 +61,7 @@ const callPlugins = async (method: RecordServiceHook) => Promise.all(recordingPl
         })
       );
     } catch (error) {
-      showError(error as any, {title: `Something went wrong while using the plugin \u201c${plugin.prettyName}\u201d`, plugin});
+      showError(error as any, {title: `Something went wrong while using the plugin \u201C${plugin.prettyName}\u201D`, plugin});
     }
   }
 }));
@@ -93,15 +98,20 @@ export const startRecording = async (options: StartRecordingOptions) => {
     record60fps,
     showCursor,
     highlightClicks,
-    recordAudio
+    recordAudio,
+    recordingQuality
   } = settings.store;
+
+  const requestedCodec = recordingCodecs[recordingQuality];
+  const videoCodec = createAperture.videoCodecs.has(requestedCodec) ? requestedCodec : Encoding.h264;
 
   apertureOptions = {
     fps: record60fps ? 60 : 30,
     cropArea: cropperBounds,
     showCursor,
     highlightClicks,
-    screenId: displayId
+    screenId: displayId,
+    videoCodec
   };
 
   if (recordAudio) {
@@ -121,7 +131,7 @@ export const startRecording = async (options: StartRecordingOptions) => {
     .recordingPlugins
     .flatMap(
       plugin => {
-        const validServices = plugin.config.validServices;
+        const {validServices} = plugin.config;
         return plugin.recordServicesWithStatus
           .filter(({title, isEnabled}) => isEnabled && validServices.includes(title))
           .map(service => ({plugin, service}));
@@ -162,7 +172,7 @@ export const startRecording = async (options: StartRecordingOptions) => {
 
   if (lastError) {
     track('recording/stopped/error');
-    showError(lastError as any, {title: 'Recording error', plugin: undefined});
+    showError(lastError, {title: 'Recording error', plugin: undefined});
     past = undefined;
     cleanup();
     return;
@@ -242,7 +252,12 @@ export const stopRecordingWithNoEdit = async () => {
   try {
     await Promise.race([
       aperture.stopRecording(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Stop recording timed out')), 5000))
+      new Promise((resolve, reject) => {
+        void resolve;
+        setTimeout(() => {
+          reject(new Error('Stop recording timed out'));
+        }, 5000);
+      })
     ]);
     setOverallDuration(0);
     setCurrentDurationStart(0);

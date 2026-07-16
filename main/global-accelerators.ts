@@ -5,7 +5,9 @@ import {windowManager} from './windows/manager';
 import {stopRecording} from './aperture';
 
 const openCropper = () => {
-  if (!windowManager.cropper?.isOpen()) {
+  if (windowManager.cropper?.isOpen()) {
+    windowManager.cropper.close();
+  } else {
     windowManager.cropper?.open();
   }
 };

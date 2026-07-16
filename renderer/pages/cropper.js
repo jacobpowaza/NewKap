@@ -27,6 +27,10 @@ export default class CropperPage extends React.Component {
 
   dev = false;
 
+  controlsReadyFrame = null;
+
+  cropperReadyFrame = null;
+
   constructor(props) {
     super(props);
 
@@ -38,8 +42,9 @@ export default class CropperPage extends React.Component {
     const remote = require('../utils/electron-remote');
 
     ipcRenderer.on('display', (_, display) => {
-      cropperContainer.setDisplay(display);
+      cropperContainer.setDisplay(display, {isReady: false});
       actionBarContainer.setDisplay(display);
+      this.signalControlsRendered();
     });
 
     ipcRenderer.on('hide', () => {
@@ -84,7 +89,36 @@ export default class CropperPage extends React.Component {
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleKeyEvent);
     document.removeEventListener('keyup', this.handleKeyEvent);
+    if (this.controlsReadyFrame !== null) {
+      cancelAnimationFrame(this.controlsReadyFrame);
+    }
+
+    if (this.cropperReadyFrame !== null) {
+      cancelAnimationFrame(this.cropperReadyFrame);
+    }
   }
+
+  signalControlsRendered = () => {
+    if (this.controlsReadyFrame !== null) {
+      cancelAnimationFrame(this.controlsReadyFrame);
+    }
+
+    if (this.cropperReadyFrame !== null) {
+      cancelAnimationFrame(this.cropperReadyFrame);
+    }
+
+    // The first frame commits the action bar; the second confirms it painted.
+    this.controlsReadyFrame = requestAnimationFrame(() => {
+      this.controlsReadyFrame = requestAnimationFrame(() => {
+        this.controlsReadyFrame = null;
+        cropperContainer.setReady(true);
+        this.cropperReadyFrame = requestAnimationFrame(() => {
+          this.cropperReadyFrame = null;
+          electron.ipcRenderer.send('cropper-controls-ready');
+        });
+      });
+    });
+  };
 
   handleKeyEvent = event => {
     switch (event.key) {
@@ -123,8 +157,8 @@ export default class CropperPage extends React.Component {
           <Overlay>
             <Cropper/>
             <Countdown/>
-            <ActionBar/>
           </Overlay>
+          <ActionBar/>
         </Provider>
         <style jsx global>{`
           html,
