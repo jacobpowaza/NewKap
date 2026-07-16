@@ -112,13 +112,19 @@ export default class ActionBarContainer extends Container {
   startMoving = ({pageX, pageY}) => {
     this.setState({isMoving: true, offsetX: pageX, offsetY: pageY});
     this.cursorContainer.addCursorObserver(this.move);
+    window.addEventListener('mouseup', this.stopMoving, {once: true});
   };
 
   stopMoving = () => {
+    if (!this.state.isMoving) {
+      return;
+    }
+
     const {x, y} = this.state;
     this.updateSettings({x, y});
     this.setState({isMoving: false});
     this.cursorContainer.removeCursorObserver(this.move);
+    window.removeEventListener('mouseup', this.stopMoving);
   };
 
   move = ({pageX, pageY}) => {

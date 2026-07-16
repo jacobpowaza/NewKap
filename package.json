@@ -1,15 +1,14 @@
 {
   "name": "kap",
   "productName": "Kap",
-  "version": "4.0.12",
+  "version": "5.0.0",
   "description": "Community-driven Kap fork focused on reliability and community maintenance",
   "license": "MIT",
-  "repository": "MuntasirMalek/NewKap",
-  "homepage": "https://github.com/MuntasirMalek/NewKap",
+  "repository": "jacobpowaza/NewKap",
+  "homepage": "https://github.com/jacobpowaza/NewKap",
   "author": {
     "name": "Kap Contributors",
-    "email": "muntasirmalek@users.noreply.github.com",
-    "url": "https://github.com/MuntasirMalek/NewKap"
+    "url": "https://github.com/jacobpowaza/NewKap"
   },
   "private": true,
   "engines": {
@@ -269,7 +268,7 @@
       "icon": "build/icon.icns",
       "electronUpdaterCompatibility": ">=2.16",
       "category": "public.app-category.productivity",
-      "minimumSystemVersion": "10.12.0",
+      "minimumSystemVersion": "12.0.0",
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "entitlements": "./build/entitlements.mac.inherit.plist",
@@ -293,7 +292,7 @@
         ]
       },
       "target": {
-        "target": "default",
+        "target": "dmg",
         "arch": [
           "x64",
           "arm64"
@@ -301,7 +300,7 @@
       }
     },
     "dmg": {
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
       "iconSize": 160,
       "contents": [
         {

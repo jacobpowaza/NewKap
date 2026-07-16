@@ -6,7 +6,6 @@ import {MenuItemConstructorOptions} from 'electron';
 const remote = require('../../../utils/electron-remote');
 import {ExportStatus} from '../../../common/types';
 import {useMemo} from 'react';
-import {template} from 'lodash';
 import IconMenu from '../../icon-menu';
 
 const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: UseConversionState; cancel: () => any; copy: () => any; retry: () => any; showInFolder: () => void}) => {
@@ -87,11 +86,13 @@ const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: 
           display: flex;
           align-items: center;
           height: 100%;
+          -webkit-app-region: no-drag;
         }
 
         .right {
           display: flex;
           height: 100%;
+          -webkit-app-region: no-drag;
         }
 
         .icon {
@@ -102,6 +103,7 @@ const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: 
           display: flex;
           align-items: center;
           justify-content: center;
+          -webkit-app-region: no-drag;
         }
 
         .button {
@@ -116,6 +118,7 @@ const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: 
           font-size: 12px;
           line-height: 16px;
           font-weight: 500;
+          -webkit-app-region: no-drag;
         }
 
         .button:active,

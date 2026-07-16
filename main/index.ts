@@ -1,4 +1,4 @@
-import {app, BrowserWindow, Tray, Menu, dialog} from 'electron';
+import {app, BrowserWindow, Tray, Menu, dialog, nativeImage} from 'electron';
 import path from 'path';
 import fs from 'fs';
 import {initialize as initializeRemote} from '@electron/remote/main';
@@ -10,6 +10,8 @@ app.setName('Kap');
 process.title = 'Kap';
 
 if (process.platform === 'darwin') {
+  app.setActivationPolicy('accessory');
+
   const preserveMenuBarPolicy = () => {
     app.setActivationPolicy('accessory');
   };
@@ -104,6 +106,7 @@ app.on('window-all-closed', () => {
   mark('app.whenReady resolved');
 
   if (process.platform === 'darwin') {
+    app.dock?.setIcon(nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.icns')));
     app.setActivationPolicy('accessory');
   }
 

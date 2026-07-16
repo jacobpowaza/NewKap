@@ -1,79 +1,137 @@
+<p align="center">
+  <img src="renderer/public/static/kap-icon.png" width="96" height="96" alt="Kap icon">
+</p>
+
 # Kap
 
-Kap is a focused macOS screen recorder that lives in the menu bar. This repository carries the community-maintained Electron 43 port, the repaired recording overlay, expanded recording preferences, and the startup work needed to keep Kap fast and quiet.
+Kap is a lightweight macOS screen recorder that lives in the menu bar. This community-maintained fork modernizes the Electron runtime, repairs the recording overlay, restores reliable packaging, and keeps the original fast capture workflow focused on recording, trimming, and exporting screen videos.
 
-## What Changed
+[![Latest release](https://img.shields.io/github/v/release/jacobpowaza/NewKap?label=release)](https://github.com/jacobpowaza/NewKap/releases/latest)
+[![CI](https://github.com/jacobpowaza/NewKap/actions/workflows/ci.yml/badge.svg)](https://github.com/jacobpowaza/NewKap/actions/workflows/ci.yml)
+[![macOS](https://img.shields.io/badge/macOS-12%2B-blue)](#compatibility)
+[![Intel x64](https://img.shields.io/badge/Intel-x64-informational)](#download)
+[![Apple Silicon arm64](https://img.shields.io/badge/Apple%20Silicon-arm64-informational)](#download)
+[![License](https://img.shields.io/github/license/jacobpowaza/NewKap)](LICENSE.md)
+[![Downloads](https://img.shields.io/github/downloads/jacobpowaza/NewKap/total)](https://github.com/jacobpowaza/NewKap/releases)
+[![Stars](https://img.shields.io/github/stars/jacobpowaza/NewKap?style=social)](https://github.com/jacobpowaza/NewKap/stargazers)
 
-The current release restores Kap as a proper menu-bar utility:
+## Download
 
-- Kap stays out of the Dock through the macOS accessory activation policy and `LSUIElement` bundle metadata.
-- Packaged builds identify themselves as **Kap** in menus, notifications, permission prompts, Activity Monitor, crash reports, and bundle metadata.
-- The development launcher brands Electron's local host bundle as Kap before startup, including its icon and helper display names.
-- Preferences opens reliably and exposes recording, audio, export, shortcut, login, notification, and sound settings.
-- The tray menu provides quick access to countdown, cursor, audio source, recent recordings, and the full Preferences window.
-- Cropper windows load on every display, wait for their controls to paint before accepting mouse input, and do not create duplicate overlays while opening.
-- Renderer, IPC, permission, and recording failures now retain actionable context instead of disappearing into empty catches.
+Download Kap v5 from the [GitHub releases page](https://github.com/jacobpowaza/NewKap/releases/latest).
 
-## The Overlay Freeze
+Choose the DMG for your Mac:
 
-The tray-click freeze was not a slow permission request or a blocked main thread. The optimization in `9fec762` skipped `electron-next` whenever an exported renderer already existed. In a packaged build, however, `electron-next` also installs the `file:` protocol mapping used by HTML references such as `/_next/...`.
+| Mac type | Download |
+| --- | --- |
+| Apple Silicon Mac, including M1, M2, M3, M4, and newer | `Kap-5.0.0-mac-arm64.dmg` |
+| Intel Mac | `Kap-5.0.0-mac-x64.dmg` |
 
-The cropper `BrowserWindow`s were created and shown, but every renderer bundle failed with `net::ERR_FILE_NOT_FOUND`. Because those windows are transparent, full-screen, and always on top, they intercepted input while displaying nothing. That looked exactly like an application freeze. The renderer never reached its application entry point.
+To check which Mac you have, open **Apple menu -> About This Mac** and look for **Chip** or **Processor**.
 
-The repair is deliberately small: `electron-next('./renderer')` now always initializes its protocol mapping, while development-only precompilation remains conditional. Once renderer loading resumed, two Electron 43 compatibility failures became visible and were fixed at their boundaries:
+Install:
 
-- `@electron/remote` is initialized once in main, enabled per window, and app-relative remote requires are resolved by main.
-- Renderer-side IPC responders and the few old `electron-util` remote calls use local compatibility helpers instead of Electron's removed built-in `remote` API.
+1. Download the correct DMG.
+2. Open the DMG.
+3. Drag `Kap.app` into Applications.
+4. Open Kap.
+5. Grant Screen Recording permission when macOS asks.
+6. Grant Microphone permission only if you want audio capture.
 
-The deprecated `session.getPreloads` and `session.setPreloads` warnings came from `electron-timber`, whose preload also depended on the removed built-in remote API. Its runtime hook is no longer installed. The warnings were related to that dependency, not to screen capture or the overlay failure.
+If macOS blocks an unsigned or unnotarized build, open **System Settings -> Privacy & Security** and review the Gatekeeper message for `Kap.app`. Release notes for each build state the exact signing and notarization status.
 
-## Performance
+## What Is Kap?
 
-Kap's startup path used to spend roughly 16 seconds preparing Next.js and another 15 seconds precompiling a page even when a static renderer was already available. Static builds now skip the development server and page precompile without skipping the protocol setup they still need.
+Kap records your Mac screen from a small menu-bar app. Open the tray icon, choose an area, window, or display-sized crop, then record with the countdown, cursor, audio, and quality settings you prefer. Finished recordings open in the editor for preview, trimming, conversion, copying, and saving.
 
-Local verification reached tray-ready in about **1.5 seconds**, down from roughly **30 seconds** on the old path: approximately a **20x startup improvement**. A tray click loaded and displayed cropper renderers for two monitors in about **1.1 seconds**. In short, Kap now launches absurdly faster and the click actually arrives at a working overlay.
+Kap is designed for short product demos, bug reports, design reviews, documentation clips, and quick shareable recordings.
 
-## Recording Settings
+## Kap v5
 
-Preferences persists these options through `electron-store`:
+Kap v5 is a repair and modernization release. It keeps the original menu-bar workflow, but fixes the pieces that made recent builds slow, invisible, or incorrectly branded.
 
-- Countdown enabled state and duration
-- Cursor visibility and mouse-click highlighting
-- Start and stop recording shortcuts
-- Standard, high, or maximum recording quality
-- 30 or 60 frames per second
-- Microphone input, including the system default and installed loopback devices
-- Default export format and save location
-- Launch at login
-- Notifications and notification sounds
+Highlights:
 
-The recording pipeline consumes the same settings directly. Quality maps to Aperture codecs with an H.264 fallback, frame rate and cursor options are passed into capture, selected audio devices are resolved at recording time, and the editor starts with the configured export format.
+- Electron 43 runtime compatibility work for main, renderer, IPC, and remote bridge paths.
+- Repaired `electron-next` protocol setup so packaged cropper windows can load `/_next/*` renderer assets.
+- Transparent cropper windows no longer appear before the renderer has loaded and painted controls.
+- Cropper drag, resize, and pick state is reset on every open and close.
+- Cursor movement alone cannot move or resize the crop selection.
+- Start and stop recording shortcuts are real recording actions, not just overlay open/close actions.
+- Development and packaged builds use Kap naming and icons instead of Electron branding where macOS allows.
+- Preferences now persist recording, audio, export, notification, launch, countdown, cursor, and shortcut settings.
+- Tray quick settings expose common capture controls without opening Preferences.
+- Contextual error reporting is preserved at renderer, IPC, permission, conversion, and recording boundaries.
 
-macOS does not expose system output audio as an ordinary microphone. To capture it, install a loopback audio device; Kap lists it alongside other inputs rather than pretending an unavailable source exists.
+Performance improvements verified during development:
 
-## Development
+- Startup now skips unnecessary development-server and precompile work when a static renderer build exists.
+- The renderer protocol mapping is still initialized for static builds, which avoids the invisible-overlay failure.
+- Local verification in this fork reached tray-ready in about 1.5 seconds where the old development path took roughly 30 seconds. Treat this as an approximate development-path measurement, not a universal benchmark.
 
-### Requirements
+## Features
 
-- macOS
-- Node `22.22.2` (see `.nvmrc`; supported range is Node 20 through 22)
-- Yarn `1.22.x`
-- Xcode command-line tools and the native build tools required by Aperture
+- Menu-bar screen recording workflow.
+- Crop area selection with resize handles.
+- App/window selection support through macOS window metadata.
+- Multi-display cropper windows.
+- Countdown toggle and adjustable countdown duration.
+- Cursor visibility and click-highlight settings.
+- Start and stop recording shortcuts.
+- 30 FPS and 60 FPS recording options.
+- Standard, high, and maximum recording quality options.
+- Microphone input selection.
+- Support for system-audio loopback devices when installed by the user.
+- MP4, HEVC, AV1, GIF, APNG, and WebM export options.
+- Save-location and default-export preferences.
+- Notification and sound preferences.
+- Launch-at-login preference.
+- Recent recordings in the tray menu.
+- Plugin support inherited from Kap.
 
-Install and start:
+## Compatibility
+
+Kap v5 is packaged for macOS 12 Monterey or later. Electron 43 is the runtime in this release; Electron v38 and newer require macOS 12 or later because Chromium removed older macOS support.
+
+Supported downloads:
+
+- Apple Silicon: `arm64`
+- Intel Mac: `x64`
+
+Known limitations:
+
+- Kap is a menu-bar accessory app, so it intentionally stays out of the Dock.
+- macOS may omit accessory apps from the standard Force Quit Applications window. Use Activity Monitor or the tray menu's **Quit Kap** item.
+- macOS does not expose system output audio as a normal microphone. Install a loopback audio device if you need system audio capture.
+- Signing and notarization depend on available Apple Developer credentials for the release build.
+
+## Screenshots
+
+The repository currently includes the Kap icon and plugin media, but no current v5 interface screenshot set. Do not rely on old screenshots when validating the repaired cropper; launch the app and verify the live overlay.
+
+## Developer Setup
+
+Requirements:
+
+- macOS 12 or later for runtime parity with Electron 43.
+- Node `22.22.2` from `.nvmrc` or any Node version in the supported range `>=20 <23`.
+- Yarn `1.22.x`.
+- Xcode command-line tools.
+- Native build tools required by Aperture and related recording dependencies.
+
+Install and run:
 
 ```bash
+git clone https://github.com/jacobpowaza/NewKap.git
+cd NewKap
 nvm use
 yarn install --frozen-lockfile --ignore-engines
 unset ELECTRON_RUN_AS_NODE
 yarn start
 ```
 
-The install uses `--ignore-engines` because an old lint resolver declares a stale Node range. This is not permission to install browser shims for Node built-ins: `fs`, `path`, `os`, `events`, `perf_hooks`, and `util` come from Node.
+The install command uses `--ignore-engines` because a legacy lint resolver declares a stale Node range. Do not add browser shims for Node built-ins such as `fs`, `path`, `os`, `events`, `perf_hooks`, or `util`; the renderer runs in Electron.
 
-`yarn start` compiles main and launches through `scripts/run-electron.js`. On macOS that launcher applies Kap branding to the local Electron host once per installed Electron version, so development does not flash an Electron icon or name.
-
-### Checks
+Quality checks:
 
 ```bash
 yarn typecheck
@@ -82,43 +140,92 @@ yarn test:main
 yarn build-renderer
 ```
 
-CI runs the same compile, lint, test, and renderer build checks on macOS. Next 10 uses Webpack 4, so only the renderer build command receives Node's OpenSSL legacy-provider flag. The Electron launcher explicitly strips that flag before starting the runtime.
-
-### Package
+Packaging:
 
 ```bash
+yarn build
 CSC_IDENTITY_AUTO_DISCOVERY=false yarn pack
+CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --x64
+CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --arm64
 ```
 
-The unsigned directory build is useful for local integration checks. Release builds still require the project's signing and notarization credentials. Packaged metadata is defined in `package.json`: product name `Kap`, bundle identifier `com.wulkano.kap`, Kap icon, usage descriptions, and `LSUIElement=true`.
+When Apple signing and notarization credentials are configured, omit `CSC_IDENTITY_AUTO_DISCOVERY=false` and use the repository's existing `electron-builder` signing and notarization configuration. Verify signing and notarization before publishing release artifacts.
 
-## Architecture For Contributors
+## Architecture
 
-The relevant runtime path is intentionally narrow:
+Kap has a narrow runtime path:
 
-1. `main/index.ts` establishes Kap's activation policy, initializes remote once, prepares renderer routing, and constructs the tray.
-2. `main/tray.ts` keeps click handling asynchronous and delegates overlay ownership to the window manager.
-3. `main/windows/cropper.ts` checks permissions, enumerates Electron displays, creates one cropper per display, enables remote, waits for renderer load, and prevents overlapping opens.
-4. `renderer/pages/cropper.js` receives display state and signals main only after the action bar has committed and painted; mouse events remain ignored until then.
-5. `renderer/containers/cropper.js` owns selection state and passes capture settings to `main/aperture.ts`.
-6. `main/common/settings.ts` is the canonical settings schema. Keep `renderer/common/settings.js` synchronized while the legacy renderer still imports it.
+1. `main/index.ts` sets macOS accessory behavior, prepares the renderer protocol, initializes `@electron/remote`, and wires the tray.
+2. `main/tray.ts` owns the menu-bar click and recording-state tray behavior.
+3. `main/windows/cropper.ts` checks permissions, creates per-display transparent cropper windows, waits for renderer readiness, and keeps stale overlay windows from accumulating.
+4. `renderer/pages/cropper.js` renders the cropper page and sends a post-paint readiness signal before main enables mouse input.
+5. `renderer/containers/cropper.js` owns crop selection, gesture state, countdown, and recording start parameters.
+6. `main/aperture.ts` starts and stops recording, resolves audio devices, applies quality settings, and opens the editor after capture.
+7. Conversion and export flow through `main/conversion.ts`, `main/converters/*`, and the editor renderer.
 
-Keep startup imports deliberate. Window modules other than the cropper are deferred until after tray-ready, tray menu data is cached and refreshed asynchronously, and network-backed plugin discovery must never block Preferences from opening or switching pages.
-
-When debugging renderer startup, preserve the order: prove `did-finish-load`, then preload/remote initialization, then IPC, then permissions and capture. A transparent failed window can look like a frozen main process even when main is healthy.
-
-## macOS Behavior
-
-Kap uses accessory activation plus `LSUIElement`, so it remains a menu-bar application even while Preferences or the cropper is visible. macOS intentionally omits UI-element applications from the standard Force Quit Applications list. Kap remains visible as Kap in Activity Monitor and always provides **Quit Kap** in its menus; these OS behaviors cannot be combined with a permanently hidden Dock icon in one process.
-
-Screen Recording and Microphone access are managed in **System Settings > Privacy & Security**. Permission dialogs use the signed app bundle's identity, so final release signing is required for stable production permission records.
-
-## Remaining Migration Work
-
-The Electron 43 compatibility layer keeps `@electron/remote` contained, but removing remote entirely is still worthwhile as a separate migration. The project also still carries Next 10/Webpack 4 and older JavaScript preference components. Those upgrades are intentionally outside this bug fix; broad dependency removal, ESM conversion, and full TypeScript strict mode would obscure the proven runtime repair.
+Static packaged builds load `renderer/out/*` through the `electron-next` file-protocol mapping. If that mapping is skipped, transparent cropper windows can open without visible controls and intercept input; v5 keeps that setup explicit.
 
 ## Contributing
 
-Keep changes evidence-driven and scoped. Include the failing execution point for bug fixes, avoid synchronous work in tray handlers and startup, add contextual error reporting at process boundaries, and run all four checks above before opening a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the community workflow.
+Use focused branches and keep unrelated changes out of bug-fix PRs.
 
-Kap builds on the original work of the [Kap](https://github.com/wulkano/Kap) team and Wulkano contributors. This fork is maintained by the [NewKap](https://github.com/MuntasirMalek/NewKap) community under the [MIT License](LICENSE).
+```bash
+git checkout -b fix/short-description
+yarn typecheck
+yarn lint
+yarn test:main
+yarn build-renderer
+```
+
+When changing cropper, tray, recording, or startup behavior, include the exact manual path you tested. For cropper changes, verify repeated open, close, reopen, Escape, mouseup outside the overlay, and multi-display behavior when hardware is available.
+
+Bug reports should include:
+
+- macOS version from `sw_vers`.
+- Mac architecture from About This Mac.
+- Kap version.
+- Whether the build is signed/notarized.
+- Steps to reproduce.
+- Relevant terminal output when running from `yarn start`.
+
+## Troubleshooting
+
+### Kap does not show in the Dock
+
+That is expected. Kap is a menu-bar app and uses macOS accessory activation plus `LSUIElement`.
+
+### Screen recording does not start
+
+Open **System Settings -> Privacy & Security -> Screen Recording** and grant access to Kap. Relaunch Kap after changing the permission.
+
+### Microphone or audio input is missing
+
+Open **System Settings -> Privacy & Security -> Microphone** and grant access to Kap. For system audio, install a loopback audio device and select it in Preferences.
+
+### I downloaded the wrong DMG
+
+Open **Apple menu -> About This Mac**. If it says **Chip**, use `arm64`. If it says **Processor** and names Intel, use `x64`.
+
+### macOS warns about Gatekeeper
+
+Check the release notes for signing and notarization status. Unsigned or unnotarized builds may require manual approval in **System Settings -> Privacy & Security**.
+
+### Cropper opens but the overlay is invisible or blocks clicks
+
+Run from the terminal with `yarn start` and look for cropper logs. A healthy open shows renderer load followed by cropper readiness. Rebuild the renderer with `yarn build-renderer` if static assets are stale.
+
+### Development still shows an Electron icon
+
+`scripts/run-electron.js` brands the local Electron development host with Kap metadata and writes a stamp based on the Electron version and icon hash. If macOS caches an old icon, quit Kap, rebuild, and relaunch. Avoid system-wide icon-cache resets unless you are explicitly debugging macOS LaunchServices caching.
+
+### Preferences do not persist
+
+Kap stores settings through `electron-store` in the app support directory. Check that the app can write to `~/Library/Application Support/Kap`.
+
+## Credits
+
+Kap v5 builds on the original [Kap](https://github.com/wulkano/Kap) project and the work of Wulkano contributors, Kap maintainers, plugin authors, and the [NewKap](https://github.com/MuntasirMalek/NewKap) community. The current fork focuses on keeping Kap usable on modern macOS and Electron while preserving the lightweight workflow that made Kap useful.
+
+## License
+
+Kap is released under the [MIT License](LICENSE.md). See the repository history and license files for upstream attribution and contributor history.

@@ -3,6 +3,7 @@
 
 const {spawn} = require('child_process');
 const {execFileSync} = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const electron = require('electron');
@@ -27,7 +28,9 @@ const brandDevelopmentHost = () => {
 
   const contentsDir = path.dirname(path.dirname(electron));
   const appBundle = path.dirname(contentsDir);
-  const stampPath = path.join(path.dirname(appBundle), `.kap-branding-${require('electron/package.json').version}`);
+  const iconPath = path.join(__dirname, '..', 'build', 'icon.icns');
+  const iconHash = crypto.createHash('sha256').update(fs.readFileSync(iconPath)).digest('hex').slice(0, 12);
+  const stampPath = path.join(path.dirname(appBundle), `.kap-branding-${require('electron/package.json').version}-${iconHash}`);
 
   if (fs.existsSync(stampPath)) {
     return;
@@ -42,7 +45,7 @@ const brandDevelopmentHost = () => {
   setPlistValue(appPlist, 'CFBundleName', 'Kap');
   setPlistValue(appPlist, 'CFBundleIdentifier', 'com.wulkano.kap.dev');
   setPlistValue(appPlist, 'CFBundleIconFile', 'Kap.icns');
-  fs.copyFileSync(path.join(__dirname, '..', 'build', 'icon.icns'), path.join(contentsDir, 'Resources', 'Kap.icns'));
+  fs.copyFileSync(iconPath, path.join(contentsDir, 'Resources', 'Kap.icns'));
 
   const frameworksDir = path.join(contentsDir, 'Frameworks');
   for (const helperName of ['Electron Helper', 'Electron Helper (GPU)', 'Electron Helper (Plugin)', 'Electron Helper (Renderer)']) {
