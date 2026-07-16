@@ -1,4 +1,4 @@
-import {Menu} from 'electron';
+import {app, Menu} from 'electron';
 import {MenuItemId, MenuOptions} from './utils';
 import {getAboutMenuItem, getExportHistoryMenuItem, getOpenFileMenuItem, getPreferencesMenuItem, getSendFeedbackMenuItem} from './common';
 import {getAudioDevices, getDefaultInputDevice} from '../utils/devices';
@@ -17,7 +17,7 @@ export const buildBasicCogMenu = (): MenuOptions => [
   {type: 'separator'},
   getSendFeedbackMenuItem(),
   {type: 'separator'},
-  {role: 'quit', accelerator: 'Command+Q'}
+  {label: 'Quit', accelerator: 'Command+Q', click: () => app.quit()}
 ];
 
 const getMicrophoneItem = async (): Promise<MenuOptions[number]> => {
@@ -92,7 +92,7 @@ const getCogMenuTemplate = async (): Promise<MenuOptions> => [
   {type: 'separator'},
   getSendFeedbackMenuItem(),
   {type: 'separator'},
-  {role: 'quit', accelerator: 'Command+Q'}
+  {label: 'Quit', accelerator: 'Command+Q', click: () => app.quit()}
 ];
 
 export const getCogMenuAsync = async () => {

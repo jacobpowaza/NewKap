@@ -1,4 +1,4 @@
-import {app, Tray, Menu, dialog} from 'electron';
+import {app, BrowserWindow, Tray, Menu, dialog} from 'electron';
 import path from 'path';
 import {mark} from './utils/perf';
 
@@ -125,13 +125,18 @@ app.on('window-all-closed', () => {
     const prepareNext = require('electron-next');
     await prepareNext('./renderer');
 
-    // Eagerly pre-compile pages so they're cached before user interaction
+    // Pre-compile the cropper page by loading it in a hidden window.
+    // We AWAIT this before trayReady so the main process is never
+    // busy compiling when the user interacts (prevents spinner cursor
+    // on countdown, instant first open).
     const {is: isDev} = require('electron-util');
     if (isDev.development) {
-      const http = require('http');
-      for (const page of ['cropper', 'preferences', 'config']) {
-        http.get(`http://localhost:8000/${page}`, (res: any) => res.resume()).on('error', () => {});
-      }
+      const preloadWin = new BrowserWindow({
+        show: false,
+        webPreferences: {nodeIntegration: true, enableRemoteModule: true, contextIsolation: false}
+      });
+      await preloadWin.loadURL('http://localhost:8000/cropper');
+      preloadWin.destroy();
     }
 
     await tick();
