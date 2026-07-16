@@ -15,7 +15,6 @@ import TypedEventEmitter from 'typed-emitter';
 import {plugins} from './plugins';
 import {askForTargetFilePath} from './plugins/built-in/save-file-plugin';
 import path from 'path';
-import {ensureDockIsShowingSync} from './utils/dock';
 import {windowManager} from './windows/manager';
 
 export interface ExportOptions {
@@ -310,23 +309,21 @@ export const setUpExportsListeners = () => {
     if (Export.all.some(exp => exp.status === ExportStatus.inProgress)) {
       windowManager.exports?.open();
 
-      ensureDockIsShowingSync(() => {
-        const buttonIndex = dialog.showMessageBoxSync({
-          type: 'question',
-          buttons: [
-            'Continue',
-            'Quit'
-          ],
-          defaultId: 0,
-          cancelId: 1,
-          message: 'Do you want to continue exporting?',
-          detail: 'Kap is currently exporting files. If you quit, the export task will be canceled.'
-        });
-
-        if (buttonIndex === 0) {
-          event.preventDefault();
-        }
+      const buttonIndex = dialog.showMessageBoxSync({
+        type: 'question',
+        buttons: [
+          'Continue',
+          'Quit'
+        ],
+        defaultId: 0,
+        cancelId: 1,
+        message: 'Do you want to continue exporting?',
+        detail: 'Kap is currently exporting files. If you quit, the export task will be canceled.'
       });
+
+      if (buttonIndex === 0) {
+        event.preventDefault();
+      }
     }
   });
 };

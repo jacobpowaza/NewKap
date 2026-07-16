@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import {connect, CropperContainer} from '../../containers';
 
 const Countdown = ({countdown, countdownValue}) => {
@@ -44,6 +45,11 @@ const Countdown = ({countdown, countdownValue}) => {
       `}</style>
     </div>
   );
+};
+
+Countdown.propTypes = {
+  countdown: PropTypes.bool,
+  countdownValue: PropTypes.number
 };
 
 export default connect(

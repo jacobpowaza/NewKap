@@ -1,5 +1,5 @@
 import {windowManager} from './manager';
-import {BrowserWindow, systemPreferences, dialog, screen, Display, app} from 'electron';
+import {BrowserWindow, systemPreferences, dialog, screen, Display, app, globalShortcut, ipcMain} from 'electron';
 import {enable as enableRemote} from '@electron/remote/main';
 
 import {settings} from '../common/settings';
@@ -12,6 +12,39 @@ let notificationId: number | undefined;
 let isOpen = false;
 let openingPromise: Promise<void> | undefined;
 let isDestroying = false;
+let closeShortcutsRegistered = false;
+
+const closeShortcutAccelerators = ['Escape', 'CommandOrControl+.'];
+
+const unregisterCloseShortcuts = () => {
+  if (!closeShortcutsRegistered) {
+    return;
+  }
+
+  for (const accelerator of closeShortcutAccelerators) {
+    if (globalShortcut.isRegistered(accelerator)) {
+      globalShortcut.unregister(accelerator);
+    }
+  }
+
+  closeShortcutsRegistered = false;
+};
+
+const registerCloseShortcuts = () => {
+  if (closeShortcutsRegistered) {
+    return;
+  }
+
+  for (const accelerator of closeShortcutAccelerators) {
+    try {
+      globalShortcut.register(accelerator, closeAllCroppers);
+    } catch (error) {
+      console.error('Error registering cropper close shortcut', accelerator, error);
+    }
+  }
+
+  closeShortcutsRegistered = true;
+};
 
 const createCropper = (display: Display, activeDisplayId?: number): BrowserWindow => {
   const {id, bounds} = display;
@@ -28,6 +61,8 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
     movable: false,
     frame: false,
     transparent: true,
+    type: process.platform === 'darwin' ? 'panel' : undefined,
+    skipTaskbar: true,
     show: false,
     webPreferences: {
       nodeIntegration: true,
@@ -35,15 +70,46 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
       contextIsolation: false
     } as any
   });
-
-  loadRoute(cropper, 'cropper');
   enableRemote(cropper.webContents);
+  cropper.setIgnoreMouseEvents(true);
+
+  loadRoute(cropper, 'cropper').catch(error => {
+    console.error('[cropper] failed to load renderer route', error);
+    closeAllCroppers();
+  });
 
   cropper.setAlwaysOnTop(true, 'screen-saver', 1);
 
   cropper.webContents.on('did-finish-load', () => {
     readyCroppers.add(cropper.id);
     sendDisplayInfo(cropper, display, activeDisplayId);
+  });
+
+  cropper.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'Escape') {
+      event.preventDefault();
+      closeAllCroppers();
+    }
+  });
+
+  cropper.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('[cropper] renderer failed to load', {errorCode, errorDescription, validatedURL});
+    closeAllCroppers();
+  });
+
+  cropper.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[cropper] render process gone', details);
+    closeAllCroppers();
+  });
+
+  cropper.webContents.on('unresponsive', () => {
+    console.error('[cropper] webContents became unresponsive');
+    closeAllCroppers();
+  });
+
+  cropper.on('unresponsive', () => {
+    console.error('[cropper] window became unresponsive');
+    closeAllCroppers();
   });
 
   cropper.on('close', event => {
@@ -59,6 +125,7 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
     if (croppers.has(id)) {
       croppers.delete(id);
     }
+
     readyCroppers.delete(cropper.id);
   });
 
@@ -69,9 +136,12 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
 const closeAllCroppers = () => {
   screen.removeAllListeners('display-removed');
   screen.removeAllListeners('display-added');
+  unregisterCloseShortcuts();
 
   for (const cropper of croppers.values()) {
     if (!cropper.isDestroyed()) {
+      cropper.setIgnoreMouseEvents(false);
+      cropper.setVisibleOnAllWorkspaces(false);
       cropper.webContents.send('hide');
       cropper.hide();
     }
@@ -89,6 +159,7 @@ const destroyAllCroppers = () => {
   isDestroying = true;
   screen.removeAllListeners('display-removed');
   screen.removeAllListeners('display-added');
+  unregisterCloseShortcuts();
 
   for (const [id, cropper] of croppers) {
     cropper.destroy();
@@ -123,6 +194,45 @@ const sendDisplayInfo = (cropper: BrowserWindow, display: Display, activeDisplay
   cropper.webContents.send('display', displayInfo);
 };
 
+const waitForCropperReady = async (cropper: BrowserWindow): Promise<void> => {
+  if (readyCroppers.has(cropper.id)) {
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Cropper window ${cropper.id} did not finish loading within 10 seconds`));
+    }, 10_000);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      cropper.webContents.removeListener('did-finish-load', handleReady);
+      cropper.webContents.removeListener('did-fail-load', handleFailure);
+      cropper.webContents.removeListener('render-process-gone', handleGone);
+    };
+
+    const handleReady = () => {
+      cleanup();
+      resolve();
+    };
+
+    const handleFailure = (_event: Electron.Event, errorCode: number, errorDescription: string) => {
+      cleanup();
+      reject(new Error(`Cropper window ${cropper.id} failed to load (${errorCode}): ${errorDescription}`));
+    };
+
+    const handleGone = (_event: Electron.Event, details: Electron.RenderProcessGoneDetails) => {
+      cleanup();
+      reject(new Error(`Cropper window ${cropper.id} renderer exited: ${details.reason}`));
+    };
+
+    cropper.webContents.once('did-finish-load', handleReady);
+    cropper.webContents.once('did-fail-load', handleFailure);
+    cropper.webContents.once('render-process-gone', handleGone);
+  });
+};
+
 const ensureCroppers = async (activeDisplayId: number): Promise<void> => {
   const displays = screen.getAllDisplays();
   const currentDisplayIds = new Set(displays.map(d => d.id));
@@ -148,15 +258,7 @@ const ensureCroppers = async (activeDisplayId: number): Promise<void> => {
       }
     } else {
       const cropper = createCropper(display, activeDisplayId);
-      newCropperPromises.push(
-        new Promise<void>(resolve => {
-          if (readyCroppers.has(cropper.id)) {
-            resolve();
-          } else {
-            cropper.webContents.once('did-finish-load', () => resolve());
-          }
-        })
-      );
+      newCropperPromises.push(waitForCropperReady(cropper));
     }
   }
 
@@ -172,12 +274,17 @@ const openCropperWindow = async () => {
 
   openingPromise = (async () => {
     try {
-      closeAllCroppers();
+      if (isOpen) {
+        closeAllCroppers();
+        return;
+      }
+
       if (windowManager.editor?.areAnyBlocking()) {
         return;
       }
 
-      if (!ensureScreenCapturePermissions()) {
+      const hasScreenPermission = ensureScreenCapturePermissions();
+      if (!hasScreenPermission) {
         return;
       }
 
@@ -219,10 +326,17 @@ const openCropperWindow = async () => {
       await ensureCroppers(activeDisplayId);
 
       for (const cropper of croppers.values()) {
+        cropper.setIgnoreMouseEvents(true);
+        cropper.setVisibleOnAllWorkspaces(false);
         cropper.showInactive();
       }
 
+      if (process.platform === 'darwin') {
+        app.setActivationPolicy('accessory');
+      }
+
       croppers.get(activeDisplayId)?.focus();
+      registerCloseShortcuts();
 
       notificationId = (systemPreferences as any).subscribeWorkspaceNotification('NSWorkspaceActiveSpaceDidChangeNotification', () => {
         closeAllCroppers();
@@ -258,6 +372,10 @@ const openCropperWindow = async () => {
           cropper.showInactive();
         });
       });
+    } catch (error) {
+      console.error('[cropper] failed to open recording overlay', error);
+      closeAllCroppers();
+      throw error;
     } finally {
       openingPromise = undefined;
     }
@@ -282,7 +400,9 @@ const selectApp = async (window: MacWindow, activateWindow: (ownerName: string) 
   const display = screen.getDisplayMatching({x, y, width, height});
   const {id, bounds: {x: screenX, y: screenY}} = display;
 
-  await new Promise(resolve => setTimeout(resolve, 300));
+  await new Promise(resolve => {
+    setTimeout(resolve, 300);
+  });
 
   for (const cropper of croppers.values()) {
     if (!cropper.isDestroyed()) {
@@ -335,12 +455,20 @@ const sendCountdownToCroppers = (value: number) => {
 
 const isCropperOpen = () => isOpen;
 
-app.on('before-quit', destroyAllCroppers);
-
-app.on('browser-window-created', () => {
-  if (!isCropperOpen()) {
-    app.dock?.show();
+const handleControlsReady = (event: Electron.IpcMainEvent) => {
+  const cropper = BrowserWindow.fromWebContents(event.sender);
+  if (!isOpen || !cropper || ![...croppers.values()].includes(cropper)) {
+    return;
   }
+
+  cropper.setIgnoreMouseEvents(false);
+};
+
+ipcMain.on('cropper-controls-ready', handleControlsReady);
+
+app.on('before-quit', () => {
+  ipcMain.removeListener('cropper-controls-ready', handleControlsReady);
+  destroyAllCroppers();
 });
 
 windowManager.setCropper({

@@ -48,6 +48,10 @@ const openPrefsWindow = async (options?: PreferencesWindowOptions) => {
   const titlebarHeight = 85;
   prefsWindow.setSheetOffset(titlebarHeight);
 
+  prefsWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[preferences] render process gone', details);
+  });
+
   prefsWindow.on('close', () => {
     prefsWindow = undefined;
   });

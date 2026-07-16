@@ -27,6 +27,8 @@ export default class CropperPage extends React.Component {
 
   dev = false;
 
+  controlsReadyFrame = null;
+
   constructor(props) {
     super(props);
 
@@ -40,6 +42,7 @@ export default class CropperPage extends React.Component {
     ipcRenderer.on('display', (_, display) => {
       cropperContainer.setDisplay(display);
       actionBarContainer.setDisplay(display);
+      this.signalControlsRendered();
     });
 
     ipcRenderer.on('hide', () => {
@@ -84,7 +87,24 @@ export default class CropperPage extends React.Component {
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleKeyEvent);
     document.removeEventListener('keyup', this.handleKeyEvent);
+    if (this.controlsReadyFrame !== null) {
+      cancelAnimationFrame(this.controlsReadyFrame);
+    }
   }
+
+  signalControlsRendered = () => {
+    if (this.controlsReadyFrame !== null) {
+      cancelAnimationFrame(this.controlsReadyFrame);
+    }
+
+    // The first frame commits the action bar; the second confirms it painted.
+    this.controlsReadyFrame = requestAnimationFrame(() => {
+      this.controlsReadyFrame = requestAnimationFrame(() => {
+        this.controlsReadyFrame = null;
+        electron.ipcRenderer.send('cropper-controls-ready');
+      });
+    });
+  };
 
   handleKeyEvent = event => {
     switch (event.key) {

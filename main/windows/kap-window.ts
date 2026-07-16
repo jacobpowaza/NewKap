@@ -25,7 +25,7 @@ app.on('browser-window-focus', (_, window) => {
 export default class KapWindow<State = any> {
   static defaultOptions: Partial<KapWindowOptions<any>> = {
     waitForMount: true,
-    dock: true,
+    dock: false,
     menu: defaultMenu => defaultMenu
   };
 
@@ -126,12 +126,6 @@ export default class KapWindow<State = any> {
     const {waitForMount} = this.options;
 
     KapWindow.windows.set(this.id, this);
-
-    this.browserWindow.on('show', () => {
-      if (this.options.dock && !app.dock?.isVisible()) {
-        app.dock?.show();
-      }
-    });
 
     this.browserWindow.on('close', this.cleanup);
     this.browserWindow.on('closed', this.cleanup);

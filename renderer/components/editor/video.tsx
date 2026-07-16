@@ -63,7 +63,7 @@ const Video = () => {
       await videoControlsContainer.pause();
     }
 
-    const {Menu} = require('electron-util').api;
+    const {Menu} = require('../../utils/electron-remote');
     const menu = Menu.buildFromTemplate([{
       label: 'Snapshot',
       click: () => {

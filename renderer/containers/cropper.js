@@ -523,7 +523,7 @@ export default class CropperContainer extends Container {
       return;
     }
 
-    const {x, y, width, height, screenWidth, screenHeight, displayId} = this.state;
+    const {width, height} = this.state;
     if (!width || !height) {
       return;
     }
@@ -534,7 +534,8 @@ export default class CropperContainer extends Container {
       return;
     }
 
-    this.setState({countdownValue: 3, countdown: true});
+    const countdownDuration = this.settings.get('countdownDuration', 3);
+    this.setState({countdownValue: countdownDuration, countdown: true});
 
     const tick = () => {
       const {countdownValue} = this.state;
