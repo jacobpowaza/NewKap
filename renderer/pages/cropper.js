@@ -31,6 +31,10 @@ export default class CropperPage extends React.Component {
 
   cropperReadyFrame = null;
 
+  controlsReadyTimeout = null;
+
+  cropperSessionId = null;
+
   constructor(props) {
     super(props);
 
@@ -42,12 +46,15 @@ export default class CropperPage extends React.Component {
     const remote = require('../utils/electron-remote');
 
     ipcRenderer.on('display', (_, display) => {
+      this.cropperSessionId = display.sessionId;
       cropperContainer.setDisplay(display, {isReady: false});
       actionBarContainer.setDisplay(display);
       this.signalControlsRendered();
     });
 
     ipcRenderer.on('hide', () => {
+      cropperContainer.resetInteractionState('hide');
+      actionBarContainer.stopMoving();
       cropperContainer.setState({
         isRecording: false,
         willStartRecording: false,
@@ -69,12 +76,17 @@ export default class CropperPage extends React.Component {
       cropperContainer.setRecording();
     });
 
+    ipcRenderer.on('start-countdown', () => {
+      cropperContainer.startCountdown();
+    });
+
     const window = remote.getCurrentWindow();
     window.on('focus', () => {
       cropperContainer.setActive(true);
     });
 
     window.on('blur', event => {
+      this.endInteraction('window-blur');
       if (!event.defaultPrevented) {
         cropperContainer.setActive(false);
       }
@@ -84,11 +96,19 @@ export default class CropperPage extends React.Component {
   componentDidMount() {
     document.addEventListener('keydown', this.handleKeyEvent);
     document.addEventListener('keyup', this.handleKeyEvent);
+    window.addEventListener('mouseup', this.handleMouseUp);
+    window.addEventListener('pointerup', this.handlePointerUp);
+    window.addEventListener('pointercancel', this.handlePointerCancel);
+    window.addEventListener('blur', this.handleWindowBlur);
   }
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleKeyEvent);
     document.removeEventListener('keyup', this.handleKeyEvent);
+    window.removeEventListener('mouseup', this.handleMouseUp);
+    window.removeEventListener('pointerup', this.handlePointerUp);
+    window.removeEventListener('pointercancel', this.handlePointerCancel);
+    window.removeEventListener('blur', this.handleWindowBlur);
     if (this.controlsReadyFrame !== null) {
       cancelAnimationFrame(this.controlsReadyFrame);
     }
@@ -96,6 +116,13 @@ export default class CropperPage extends React.Component {
     if (this.cropperReadyFrame !== null) {
       cancelAnimationFrame(this.cropperReadyFrame);
     }
+
+    if (this.controlsReadyTimeout !== null) {
+      clearTimeout(this.controlsReadyTimeout);
+    }
+
+    cropperContainer.resetInteractionState('unmount');
+    actionBarContainer.stopMoving();
   }
 
   signalControlsRendered = () => {
@@ -107,6 +134,12 @@ export default class CropperPage extends React.Component {
       cancelAnimationFrame(this.cropperReadyFrame);
     }
 
+    if (this.controlsReadyTimeout !== null) {
+      clearTimeout(this.controlsReadyTimeout);
+    }
+
+    const sessionId = this.cropperSessionId;
+
     // The first frame commits the action bar; the second confirms it painted.
     this.controlsReadyFrame = requestAnimationFrame(() => {
       this.controlsReadyFrame = requestAnimationFrame(() => {
@@ -114,15 +147,41 @@ export default class CropperPage extends React.Component {
         cropperContainer.setReady(true);
         this.cropperReadyFrame = requestAnimationFrame(() => {
           this.cropperReadyFrame = null;
-          electron.ipcRenderer.send('cropper-controls-ready');
+          this.controlsReadyTimeout = setTimeout(() => {
+            this.controlsReadyTimeout = null;
+            console.log('[cropper] controls painted', {sessionId});
+            electron.ipcRenderer.send('cropper-controls-ready', {sessionId});
+          }, 0);
         });
       });
     });
   };
 
+  endInteraction = reason => {
+    cropperContainer.endInteraction(reason);
+    actionBarContainer.stopMoving();
+  };
+
+  handleMouseUp = () => {
+    this.endInteraction('mouse-up');
+  };
+
+  handlePointerUp = () => {
+    this.endInteraction('pointer-up');
+  };
+
+  handlePointerCancel = () => {
+    this.endInteraction('pointer-cancel');
+  };
+
+  handleWindowBlur = () => {
+    this.endInteraction('window-blur');
+  };
+
   handleKeyEvent = event => {
     switch (event.key) {
       case 'Escape':
+        this.endInteraction('escape');
         this.remote.getCurrentWindow().close();
         break;
       case 'Enter':

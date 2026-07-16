@@ -9,6 +9,24 @@ import {hasMicrophoneAccess} from '../common/system-permissions';
 import {recordingHistory} from '../recording-history';
 import {windowManager} from '../windows/manager';
 
+const menuAccelerator = (shortcut: string) => shortcut ? shortcut : undefined;
+
+const startOrOpenRecording = () => {
+  if (windowManager.cropper?.isOpen()) {
+    windowManager.cropper.startRecording();
+    return;
+  }
+
+  windowManager.cropper?.open();
+};
+
+const getStartRecordingItem = (): MenuOptions[number] => ({
+  id: MenuItemId.startRecording,
+  label: 'Start Recording',
+  accelerator: menuAccelerator(settings.get('shortcuts.triggerCropper')),
+  click: startOrOpenRecording
+});
+
 const getCountdownItem = (): MenuOptions[number] => ({
   label: 'Countdown',
   type: 'checkbox',
@@ -62,6 +80,8 @@ const getBasicAudioItem = (): MenuOptions[number] => ({
 });
 
 const getQuickSettings = (): MenuOptions => [
+  getStartRecordingItem(),
+  {type: 'separator'},
   getCountdownItem(),
   getCursorItem(),
   getBasicAudioItem(),
@@ -146,6 +166,8 @@ const getPluginsItem = (): MenuOptions[number] => {
 };
 
 const getCogMenuTemplate = async (): Promise<MenuOptions> => [
+  getStartRecordingItem(),
+  {type: 'separator'},
   getCountdownItem(),
   getCursorItem(),
   await getMicrophoneItem(),

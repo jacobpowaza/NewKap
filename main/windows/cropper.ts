@@ -13,8 +13,9 @@ let isOpen = false;
 let openingPromise: Promise<void> | undefined;
 let isDestroying = false;
 let closeShortcutsRegistered = false;
+let openSessionId = 0;
 
-const closeShortcutAccelerators = ['Escape', 'CommandOrControl+.'];
+const closeShortcutAccelerators = ['Escape'];
 
 const unregisterCloseShortcuts = () => {
   if (!closeShortcutsRegistered) {
@@ -46,7 +47,7 @@ const registerCloseShortcuts = () => {
   closeShortcutsRegistered = true;
 };
 
-const createCropper = (display: Display, activeDisplayId?: number): BrowserWindow => {
+const createCropper = (display: Display, activeDisplayId?: number, sessionId = openSessionId): BrowserWindow => {
   const {id, bounds} = display;
   const {x, y, width, height} = bounds;
 
@@ -82,7 +83,7 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
 
   cropper.webContents.on('did-finish-load', () => {
     readyCroppers.add(cropper.id);
-    sendDisplayInfo(cropper, display, activeDisplayId);
+    sendDisplayInfo(cropper, display, activeDisplayId, sessionId);
   });
 
   cropper.webContents.on('before-input-event', (event, input) => {
@@ -134,13 +135,14 @@ const createCropper = (display: Display, activeDisplayId?: number): BrowserWindo
 };
 
 const closeAllCroppers = () => {
+  console.log('[cropper] cleanup windows', {sessionId: openSessionId});
   screen.removeAllListeners('display-removed');
   screen.removeAllListeners('display-added');
   unregisterCloseShortcuts();
 
   for (const cropper of croppers.values()) {
     if (!cropper.isDestroyed()) {
-      cropper.setIgnoreMouseEvents(false);
+      cropper.setIgnoreMouseEvents(true);
       cropper.setVisibleOnAllWorkspaces(false);
       cropper.webContents.send('hide');
       cropper.hide();
@@ -156,6 +158,7 @@ const closeAllCroppers = () => {
 };
 
 const destroyAllCroppers = () => {
+  console.log('[cropper] cleanup destroy windows', {sessionId: openSessionId});
   isDestroying = true;
   screen.removeAllListeners('display-removed');
   screen.removeAllListeners('display-added');
@@ -170,13 +173,14 @@ const destroyAllCroppers = () => {
   isOpen = false;
 };
 
-const sendDisplayInfo = (cropper: BrowserWindow, display: Display, activeDisplayId?: number) => {
+const sendDisplayInfo = (cropper: BrowserWindow, display: Display, activeDisplayId?: number, sessionId = openSessionId) => {
   const {id, bounds} = display;
   const {x, y, width, height} = bounds;
   const isActive = activeDisplayId === id;
 
   const displayInfo: any = {
     isActive,
+    sessionId,
     id,
     x,
     y,
@@ -233,7 +237,7 @@ const waitForCropperReady = async (cropper: BrowserWindow): Promise<void> => {
   });
 };
 
-const ensureCroppers = async (activeDisplayId: number): Promise<void> => {
+const ensureCroppers = async (activeDisplayId: number, sessionId: number): Promise<void> => {
   const displays = screen.getAllDisplays();
   const currentDisplayIds = new Set(displays.map(d => d.id));
 
@@ -254,10 +258,10 @@ const ensureCroppers = async (activeDisplayId: number): Promise<void> => {
 
     if (existing && !existing.isDestroyed()) {
       if (readyCroppers.has(existing.id)) {
-        sendDisplayInfo(existing, display, activeDisplayId);
+        sendDisplayInfo(existing, display, activeDisplayId, sessionId);
       }
     } else {
-      const cropper = createCropper(display, activeDisplayId);
+      const cropper = createCropper(display, activeDisplayId, sessionId);
       newCropperPromises.push(waitForCropperReady(cropper));
     }
   }
@@ -320,10 +324,12 @@ const openCropperWindow = async () => {
       }
 
       isOpen = true;
+      openSessionId += 1;
+      const sessionId = openSessionId;
 
       const activeDisplayId = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id;
 
-      await ensureCroppers(activeDisplayId);
+      await ensureCroppers(activeDisplayId, sessionId);
 
       for (const cropper of croppers.values()) {
         cropper.setIgnoreMouseEvents(true);
@@ -337,6 +343,7 @@ const openCropperWindow = async () => {
 
       croppers.get(activeDisplayId)?.focus();
       registerCloseShortcuts();
+      console.log('[cropper] opened windows', {sessionId, activeDisplayId, count: croppers.size});
 
       notificationId = (systemPreferences as any).subscribeWorkspaceNotification('NSWorkspaceActiveSpaceDidChangeNotification', () => {
         closeAllCroppers();
@@ -367,7 +374,7 @@ const openCropperWindow = async () => {
       });
 
       screen.on('display-added', (_, newDisplay) => {
-        const cropper = createCropper(newDisplay);
+        const cropper = createCropper(newDisplay, undefined, openSessionId);
         cropper.webContents.once('did-finish-load', () => {
           cropper.showInactive();
         });
@@ -423,6 +430,8 @@ const selectApp = async (window: MacWindow, activateWindow: (ownerName: string) 
 };
 
 const disableCroppers = () => {
+  unregisterCloseShortcuts();
+
   if (notificationId !== undefined) {
     systemPreferences.unsubscribeWorkspaceNotification(notificationId);
     notificationId = undefined;
@@ -445,6 +454,15 @@ const setRecordingCroppers = () => {
   }
 };
 
+const startRecordingFromCroppers = () => {
+  console.log('[cropper] start recording requested from shortcut', {sessionId: openSessionId});
+  for (const cropper of croppers.values()) {
+    if (!cropper.isDestroyed()) {
+      cropper.webContents.send('start-countdown');
+    }
+  }
+};
+
 const sendCountdownToCroppers = (value: number) => {
   for (const cropper of croppers.values()) {
     if (!cropper.isDestroyed()) {
@@ -455,12 +473,17 @@ const sendCountdownToCroppers = (value: number) => {
 
 const isCropperOpen = () => isOpen;
 
-const handleControlsReady = (event: Electron.IpcMainEvent) => {
+const handleControlsReady = (event: Electron.IpcMainEvent, payload?: {sessionId?: number}) => {
   const cropper = BrowserWindow.fromWebContents(event.sender);
   if (!isOpen || !cropper || ![...croppers.values()].includes(cropper)) {
     return;
   }
 
+  if (payload?.sessionId !== undefined && payload.sessionId !== openSessionId) {
+    return;
+  }
+
+  console.log('[cropper] controls ready', {sessionId: openSessionId, rendererSessionId: payload?.sessionId, windowId: cropper.id});
   cropper.setIgnoreMouseEvents(false);
 };
 
@@ -476,6 +499,7 @@ windowManager.setCropper({
   close: closeAllCroppers,
   selectApp,
   setRecording: setRecordingCroppers,
+  startRecording: startRecordingFromCroppers,
   isOpen: isCropperOpen,
   disable: disableCroppers,
   sendCountdown: sendCountdownToCroppers
