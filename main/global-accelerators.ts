@@ -2,6 +2,7 @@ import {globalShortcut} from 'electron';
 import {ipcMain as ipc} from 'electron-better-ipc';
 import {settings} from './common/settings';
 import {windowManager} from './windows/manager';
+import {stopRecording} from './aperture';
 
 const openCropper = () => {
   if (!windowManager.cropper?.isOpen()) {
@@ -9,12 +10,11 @@ const openCropper = () => {
   }
 };
 
-// All settings that should be loaded and handled as global accelerators
 const handlers = new Map<string, () => void>([
-  ['triggerCropper', openCropper]
+  ['triggerCropper', openCropper],
+  ['stopRecording', stopRecording]
 ]);
 
-// If no action is passed, it resets
 export const setCropperShortcutAction = (action = openCropper) => {
   if (settings.get('enableShortcuts') && settings.get('shortcuts.triggerCropper')) {
     handlers.set('cropperShortcut', action);
@@ -68,8 +68,7 @@ export const initializeGlobalAccelerators = () => {
           registerShortcut(shortcut, handler);
         }
       } else if (!shortcut) {
-        // @ts-expect-error
-        settings.delete(`shortcuts.${setting}`);
+        (settings as any).delete(`shortcuts.${setting}`);
       }
     }
   });
@@ -82,6 +81,5 @@ export const initializeGlobalAccelerators = () => {
     }
   });
 
-  // Register keyboard shortcuts from store
   registerFromStore();
 };

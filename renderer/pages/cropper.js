@@ -5,6 +5,7 @@ import {Provider} from 'unstated';
 import Overlay from '../components/cropper/overlay';
 import Cropper from '../components/cropper';
 import ActionBar from '../components/action-bar';
+import Countdown from '../components/cropper/countdown';
 
 import CursorContainer from '../containers/cursor';
 import CropperContainer from '../containers/cropper';
@@ -38,6 +39,15 @@ export default class CropperPage extends React.Component {
     ipcRenderer.on('display', (_, display) => {
       cropperContainer.setDisplay(display);
       actionBarContainer.setDisplay(display);
+    });
+
+    ipcRenderer.on('hide', () => {
+      cropperContainer.setState({
+        isRecording: false,
+        willStartRecording: false,
+        countdown: false,
+        countdownValue: 0
+      });
     });
 
     ipcRenderer.on('select-app', (_, app) => {
@@ -80,6 +90,9 @@ export default class CropperPage extends React.Component {
       case 'Escape':
         this.remote.getCurrentWindow().close();
         break;
+      case 'Enter':
+        cropperContainer.startCountdown();
+        break;
       case 'Shift':
         if (event.type === 'keydown' && !event.defaultPrevented) {
           lastRatioLockState = actionBarContainer.state.ratioLocked;
@@ -108,6 +121,7 @@ export default class CropperPage extends React.Component {
         <Provider inject={[cursorContainer, cropperContainer, actionBarContainer]}>
           <Overlay>
             <Cropper/>
+            <Countdown/>
             <ActionBar/>
           </Overlay>
         </Provider>

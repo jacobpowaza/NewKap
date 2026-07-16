@@ -37,7 +37,8 @@ const RecordButton = ({
   displayId,
   willStartRecording,
   recordAudio,
-  audioInputDeviceId
+  audioInputDeviceId,
+  startCountdown
 }) => {
   const [showFirstRipple, setShowFirstRipple] = useState(false);
   const [showSecondRipple, setShowSecondRipple] = useState(false);
@@ -53,7 +54,6 @@ const RecordButton = ({
         javascriptNode.onaudioprocess = () => {
           const array = new Uint8Array(analyser.frequencyBinCount);
           analyser.getByteFrequencyData(array);
-          // eslint-disable-next-line unicorn/no-array-reduce
           const avg = array.reduce((p, c) => p + c) / array.length;
           if (avg >= 36) {
             setShowFirstRipple(true);
@@ -93,28 +93,11 @@ const RecordButton = ({
     }
   };
 
-  const startRecording = event => {
+  const handleStartRecording = event => {
     event.stopPropagation();
 
     if (cropperExists) {
-      const {remote} = electron;
-      const {startRecording} = remote.require('./aperture');
-
-      willStartRecording();
-
-      startRecording({
-        cropperBounds: {
-          x,
-          y,
-          width,
-          height
-        },
-        screenBounds: {
-          width: screenWidth,
-          height: screenHeight
-        },
-        displayId
-      });
+      startCountdown();
     }
   };
 
@@ -122,9 +105,9 @@ const RecordButton = ({
     <div
       className={classNames('container', {'cropper-exists': cropperExists})}
       tabIndex={cropperExists ? 0 : -1}
-      onKeyDown={handleKeyboardActivation(startRecording)}
+      onKeyDown={handleKeyboardActivation(handleStartRecording)}
     >
-      <div className="outer" onMouseDown={startRecording}>
+      <div className="outer" onMouseDown={handleStartRecording}>
         <div className="inner">
           {!cropperExists && <div className="fill"/>}
         </div>
@@ -230,11 +213,12 @@ RecordButton.propTypes = {
   displayId: PropTypes.number,
   willStartRecording: PropTypes.elementType,
   recordAudio: PropTypes.bool,
-  audioInputDeviceId: PropTypes.string
+  audioInputDeviceId: PropTypes.string,
+  startCountdown: PropTypes.func
 };
 
 export default connect(
   [CropperContainer],
   ({x, y, width, height, screenWidth, screenHeight, displayId, recordAudio, audioInputDeviceId}) => ({x, y, width, height, screenWidth, screenHeight, displayId, recordAudio, audioInputDeviceId}),
-  ({willStartRecording}) => ({willStartRecording})
+  ({willStartRecording, startCountdown}) => ({willStartRecording, startCountdown})
 )(RecordButton);

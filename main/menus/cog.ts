@@ -1,58 +1,24 @@
 import {Menu} from 'electron';
 import {MenuItemId, MenuOptions} from './utils';
 import {getAboutMenuItem, getExportHistoryMenuItem, getOpenFileMenuItem, getPreferencesMenuItem, getSendFeedbackMenuItem} from './common';
-import {plugins} from '../plugins';
 import {getAudioDevices, getDefaultInputDevice} from '../utils/devices';
 import {settings} from '../common/settings';
 import {defaultInputDeviceId} from '../common/constants';
 import {hasMicrophoneAccess} from '../common/system-permissions';
 
-const getCogMenuTemplate = async (): Promise<MenuOptions> => [
+export const buildBasicCogMenu = (): MenuOptions => [
   getAboutMenuItem(),
-  {
-    type: 'separator'
-  },
+  {type: 'separator'},
   getPreferencesMenuItem(),
-  {
-    type: 'separator'
-  },
-  getPluginsItem(),
-  await getMicrophoneItem(),
-  {
-    type: 'separator'
-  },
+  {type: 'separator'},
+  {type: 'separator'},
   getOpenFileMenuItem(),
   getExportHistoryMenuItem(),
-  {
-    type: 'separator'
-  },
+  {type: 'separator'},
   getSendFeedbackMenuItem(),
-  {
-    type: 'separator'
-  },
-  {
-    role: 'quit',
-    accelerator: 'Command+Q'
-  }
+  {type: 'separator'},
+  {role: 'quit', accelerator: 'Command+Q'}
 ];
-
-const getPluginsItem = (): MenuOptions[number] => {
-  const items = plugins.recordingPlugins.flatMap(plugin =>
-    plugin.recordServicesWithStatus.map(service => ({
-      label: service.title,
-      type: 'checkbox' as const,
-      checked: service.isEnabled,
-      click: async () => service.setEnabled(!service.isEnabled)
-    }))
-  );
-
-  return {
-    id: MenuItemId.plugins,
-    label: 'Plugins',
-    submenu: items,
-    visible: items.length > 0
-  };
-};
 
 const getMicrophoneItem = async (): Promise<MenuOptions[number]> => {
   const devices = await getAudioDevices();
@@ -94,8 +60,41 @@ const getMicrophoneItem = async (): Promise<MenuOptions[number]> => {
   };
 };
 
-export const getCogMenu = async () => {
-  return Menu.buildFromTemplate(
-    await getCogMenuTemplate()
+const getPluginsItem = (): MenuOptions[number] => {
+  const {plugins} = require('../plugins');
+  const items = plugins.recordingPlugins.flatMap((plugin: any) =>
+    plugin.recordServicesWithStatus.map((service: any) => ({
+      label: service.title,
+      type: 'checkbox' as const,
+      checked: service.isEnabled,
+      click: async () => service.setEnabled(!service.isEnabled)
+    }))
   );
+
+  return {
+    id: MenuItemId.plugins,
+    label: 'Plugins',
+    submenu: items,
+    visible: items.length > 0
+  };
+};
+
+const getCogMenuTemplate = async (): Promise<MenuOptions> => [
+  getAboutMenuItem(),
+  {type: 'separator'},
+  getPreferencesMenuItem(),
+  {type: 'separator'},
+  getPluginsItem(),
+  await getMicrophoneItem(),
+  {type: 'separator'},
+  getOpenFileMenuItem(),
+  getExportHistoryMenuItem(),
+  {type: 'separator'},
+  getSendFeedbackMenuItem(),
+  {type: 'separator'},
+  {role: 'quit', accelerator: 'Command+Q'}
+];
+
+export const getCogMenuAsync = async () => {
+  return Menu.buildFromTemplate(await getCogMenuTemplate());
 };

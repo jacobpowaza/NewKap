@@ -16,6 +16,7 @@ export interface CropperManager {
   setRecording: () => void;
   isOpen: () => boolean;
   selectApp: (window: MacWindow, activateWindow: (ownerName: string) => Promise<void>) => void;
+  sendCountdown?: (value: number) => void;
 }
 
 export interface ConfigManager {

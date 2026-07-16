@@ -7,7 +7,8 @@ const {defaultInputDeviceId} = require('./constants');
 const shortcutToAccelerator = require('../utils/shortcut-to-accelerator');
 
 export const shortcuts = {
-  triggerCropper: 'Toggle Kap'
+  triggerCropper: 'Toggle Kap',
+  stopRecording: 'Stop Recording'
 };
 
 const shortcutSchema = {
@@ -116,7 +117,6 @@ export const settings = new Store<Settings>({
     },
     shortcuts: {
       type: 'object',
-      // eslint-disable-next-line unicorn/no-array-reduce
       properties: Object.keys(shortcuts).reduce((acc, key) => ({...acc, [key]: shortcutSchema}), {}),
       default: {}
     },
@@ -127,13 +127,11 @@ export const settings = new Store<Settings>({
   }
 });
 
-// TODO: Remove this when we feel like everyone has migrated
 if (settings.has('recordKeyboardShortcut')) {
   settings.set('enableShortcuts', settings.get('recordKeyboardShortcut'));
   settings.delete('recordKeyboardShortcut');
 }
 
-// TODO: Remove this when we feel like everyone has migrated
 if (settings.has('cropperShortcut')) {
   settings.set('shortcuts.triggerCropper', shortcutToAccelerator(settings.get('cropperShortcut')));
   settings.delete('cropperShortcut');

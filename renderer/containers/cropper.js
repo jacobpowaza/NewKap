@@ -4,8 +4,6 @@ import {Container} from 'unstated';
 
 import {minHeight, minWidth, resizeTo, setScreenSize} from '../utils/inputs';
 
-// Helper function for retrieving the simplest ratio,
-// via the largest common divisor of two numbers (thanks @doot0)
 const getLargestCommonDivisor = (first, second) => {
   if (!first) {
     return 1;
@@ -65,7 +63,9 @@ export default class CropperContainer extends Container {
       isReady: false,
       ratio: [1, 1],
       recordAudio: this.settings.get('recordAudio'),
-      audioInputDeviceId: this.settings.getSelectedInputDeviceId()
+      audioInputDeviceId: this.settings.getSelectedInputDeviceId(),
+      countdown: false,
+      countdownValue: 0
     };
 
     this.settings.onDidChange('recordAudio', recordAudio => {
@@ -92,7 +92,10 @@ export default class CropperContainer extends Container {
       y: y || screenHeight / 2,
       width,
       height,
-      ratio
+      ratio,
+      isRecording: false,
+      countdown: false,
+      countdownValue: 0
     });
     this.actionBarContainer.setInputValues({width, height});
   };
@@ -102,7 +105,7 @@ export default class CropperContainer extends Container {
   };
 
   setRecording = () => {
-    this.setState({isRecording: true});
+    this.setState({isRecording: true, countdown: false, countdownValue: 0});
   };
 
   setActive = isActive => {
@@ -414,7 +417,6 @@ export default class CropperContainer extends Container {
         updates.currentHandle = {bottom: !bottom, top: !top, left: !left, right: !right};
       }
 
-      // Check which dimension has changed the most
       if (
         (updates.width - original.width) * ratio[1] > (updates.height - original.height) * ratio[0]
       ) {
@@ -515,5 +517,51 @@ export default class CropperContainer extends Container {
     }
 
     this.setBounds(updates, {save: false});
+  };
+
+  startCountdown = () => {
+    if (this.state.countdown || this.state.isRecording) {
+      return;
+    }
+
+    const {x, y, width, height, screenWidth, screenHeight, displayId} = this.state;
+    if (!width || !height) {
+      return;
+    }
+
+    this.setState({countdownValue: 3, countdown: true});
+
+    const tick = () => {
+      const {countdownValue} = this.state;
+      if (countdownValue <= 1) {
+        this.setState({countdown: false, countdownValue: 0});
+        this.doStartRecording();
+        return;
+      }
+
+      this.setState({countdownValue: countdownValue - 1});
+      setTimeout(tick, 1000);
+    };
+
+    setTimeout(tick, 1000);
+  };
+
+  doStartRecording = () => {
+    const {x, y, width, height, screenWidth, screenHeight, displayId} = this.state;
+
+    if (!width || !height) {
+      return;
+    }
+
+    const {remote} = electron;
+    const {startRecording} = remote.require('./aperture');
+
+    this.willStartRecording();
+
+    startRecording({
+      cropperBounds: {x, y, width, height},
+      screenBounds: {width: screenWidth, height: screenHeight},
+      displayId
+    });
   };
 }
