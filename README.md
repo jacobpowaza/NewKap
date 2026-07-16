@@ -121,4 +121,4 @@ The Electron 43 compatibility layer keeps `@electron/remote` contained, but remo
 
 Keep changes evidence-driven and scoped. Include the failing execution point for bug fixes, avoid synchronous work in tray handlers and startup, add contextual error reporting at process boundaries, and run all four checks above before opening a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the community workflow.
 
-Kap builds on the original work of the [Kap](https://github.com/wulkano/Kap) team and Wulkano contributors. This fork is maintained by the NewKap community under the [MIT License](LICENSE).
+Kap builds on the original work of the [Kap](https://github.com/wulkano/Kap) team and Wulkano contributors. This fork is maintained by the [NewKap](https://github.com/MuntasirMalek/NewKap) community under the [MIT License](LICENSE).
