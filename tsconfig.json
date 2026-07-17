@@ -5,6 +5,11 @@
     "target": "es2019",
     "module": "commonjs",
     "esModuleInterop": true,
+    "types": [
+      "node"
+    ],
+    "incremental": true,
+    "tsBuildInfoFile": "dist-js/.tsbuildinfo",
     "allowJs": true,
     "sourceMap": true,
     "inlineSources": true,

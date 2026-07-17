@@ -1,8 +1,8 @@
 import {DropdownArrowIcon, CancelIcon} from '../../../vectors';
 import classNames from 'classnames';
 import {useRef} from 'react';
-import {MenuItemConstructorOptions, NativeImage} from 'electron';
-const remote = require('../../../utils/electron-remote');
+import type {MenuItemConstructorOptions} from 'electron';
+import {popupMenu} from '../../../utils/menu-actions';
 
 type Option<T> = {
   label: string;
@@ -12,7 +12,7 @@ type Option<T> = {
   checked?: boolean;
   click?: () => void;
   separator?: false;
-  icon?: NativeImage;
+  icon?: string;
 };
 
 export type Separator = {
@@ -49,8 +49,6 @@ const Select = <T, >(props: Props<T>) => {
 
     const boundingRect = select.current.getBoundingClientRect();
 
-    const {Menu} = remote;
-
     const convertToMenuTemplate = (option: Option<T> | Separator): MenuItemConstructorOptions => {
       if (option.separator) {
         return {type: 'separator'};
@@ -75,9 +73,7 @@ const Select = <T, >(props: Props<T>) => {
       };
     };
 
-    const menu = Menu.buildFromTemplate(options.map(opt => convertToMenuTemplate(opt)));
-
-    menu.popup({
+    void popupMenu(options.map(opt => convertToMenuTemplate(opt)), {
       x: Math.round(boundingRect.left),
       y: Math.round(boundingRect.top)
     });

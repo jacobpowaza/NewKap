@@ -1,6 +1,6 @@
-import electron from 'electron';
 import React from 'react';
 import {Provider} from 'unstated';
+import kap from '../utils/kap';
 
 import Overlay from '../components/cropper/overlay';
 import Cropper from '../components/cropper';
@@ -23,8 +23,6 @@ actionBarContainer.bindCropper(cropperContainer);
 let lastRatioLockState = null;
 
 export default class CropperPage extends React.Component {
-  remote = require('../utils/electron-remote');
-
   dev = false;
 
   controlsReadyFrame = null;
@@ -38,21 +36,14 @@ export default class CropperPage extends React.Component {
   constructor(props) {
     super(props);
 
-    if (!electron.ipcRenderer) {
-      return;
-    }
-
-    const {ipcRenderer} = electron;
-    const remote = require('../utils/electron-remote');
-
-    ipcRenderer.on('display', (_, display) => {
+    kap.ipc.on('display', display => {
       this.cropperSessionId = display.sessionId;
       cropperContainer.setDisplay(display, {isReady: false});
       actionBarContainer.setDisplay(display);
       this.signalControlsRendered();
     });
 
-    ipcRenderer.on('hide', () => {
+    kap.ipc.on('hide', () => {
       cropperContainer.resetInteractionState('hide');
       actionBarContainer.stopMoving();
       cropperContainer.setState({
@@ -63,37 +54,26 @@ export default class CropperPage extends React.Component {
       });
     });
 
-    ipcRenderer.on('select-app', (_, app) => {
+    kap.ipc.on('select-app', app => {
       cropperContainer.selectApp(app);
       cropperContainer.setActive(true);
     });
 
-    ipcRenderer.on('blur', () => {
+    kap.ipc.on('blur', () => {
       cropperContainer.setActive(false);
     });
 
-    ipcRenderer.on('start-recording', () => {
+    kap.ipc.on('start-recording', () => {
       cropperContainer.setRecording();
     });
 
-    ipcRenderer.on('start-countdown', () => {
+    kap.ipc.on('start-countdown', () => {
       cropperContainer.startCountdown();
-    });
-
-    const window = remote.getCurrentWindow();
-    window.on('focus', () => {
-      cropperContainer.setActive(true);
-    });
-
-    window.on('blur', event => {
-      this.endInteraction('window-blur');
-      if (!event.defaultPrevented) {
-        cropperContainer.setActive(false);
-      }
     });
   }
 
   componentDidMount() {
+    kap.cropper.rendererReady();
     document.addEventListener('keydown', this.handleKeyEvent);
     document.addEventListener('keyup', this.handleKeyEvent);
     window.addEventListener('mouseup', this.handleMouseUp);
@@ -150,7 +130,7 @@ export default class CropperPage extends React.Component {
           this.controlsReadyTimeout = setTimeout(() => {
             this.controlsReadyTimeout = null;
             console.log('[cropper] controls painted', {sessionId});
-            electron.ipcRenderer.send('cropper-controls-ready', {sessionId});
+            kap.cropper.controlsReady({sessionId});
           }, 0);
         });
       });
@@ -182,7 +162,7 @@ export default class CropperPage extends React.Component {
     switch (event.key) {
       case 'Escape':
         this.endInteraction('escape');
-        this.remote.getCurrentWindow().close();
+        kap.window.close();
         break;
       case 'Enter':
         cropperContainer.startCountdown();
@@ -201,7 +181,7 @@ export default class CropperPage extends React.Component {
         cropperContainer.toggleResizeFromCenter(event.type === 'keydown');
         break;
       case 'i':
-        this.remote.getCurrentWindow().setIgnoreMouseEvents(true);
+        kap.window.setIgnoreMouseEvents(true);
         this.dev = !this.dev;
         break;
       default:

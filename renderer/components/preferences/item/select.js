@@ -3,6 +3,7 @@ import React from 'react';
 
 import {DropdownArrowIcon} from '../../../vectors';
 import {handleKeyboardActivation} from '../../../utils/inputs';
+import {popupMenu} from '../../../utils/menu-actions';
 
 class Select extends React.Component {
   static defaultProps = {
@@ -25,28 +26,21 @@ class Select extends React.Component {
       return {};
     }
 
-    const {Menu, MenuItem} = require('../../../utils/electron-remote');
-    const menu = new Menu();
-
-    for (const option of options) {
-      menu.append(
-        new MenuItem({
-          label: option.label,
-          type: 'radio',
-          checked: option.value === selected,
-          click: () => onSelect(option.value)
-        })
-      );
-    }
-
-    return {menu};
+    return {
+      menuTemplate: options.map(option => ({
+        label: option.label,
+        type: 'radio',
+        checked: option.value === selected,
+        click: () => onSelect(option.value)
+      }))
+    };
   }
 
   handleClick = () => {
     if (this.props.options.length > 0) {
       const boundingRect = this.select.current.getBoundingClientRect();
 
-      this.state.menu.popup({
+      popupMenu(this.state.menuTemplate, {
         x: Math.round(boundingRect.left),
         y: Math.round(boundingRect.top)
       });

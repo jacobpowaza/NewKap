@@ -7,6 +7,7 @@ import VideoControlsContainer from './video-controls-container';
 import useEditorOptions, {EditorOptionsState} from 'hooks/editor/use-editor-options';
 import {Format, App} from 'common/types';
 import useEditorWindowState from 'hooks/editor/use-editor-window-state';
+import kap from '../../utils/kap';
 
 type EditService = EditorOptionsState['editServices'][0];
 
@@ -19,7 +20,7 @@ type SharePlugin = {
 const isFormatMuted = (format: Format) => ['gif', 'apng'].includes(format);
 
 const useOptions = () => {
-  const defaultExportFormat = require('../../utils/electron-remote').require('./common/settings').settings.get('defaultExportFormat');
+  const defaultExportFormat = kap.settings.get('defaultExportFormat');
   const {fps: originalFps} = useEditorWindowState();
   const {
     state: {
@@ -73,19 +74,19 @@ const useOptions = () => {
     }
 
     const formatOption = formats.find(f => f.format === formatName);
-    const selectedSharePlugin = formatOption.plugins.find(plugin => {
+    const selectedSharePlugin = formatOption?.plugins.find(plugin => {
       return (
-        plugin.pluginName === sharePlugin.pluginName &&
-        plugin.title === sharePlugin.serviceTitle &&
-        (plugin.apps?.some(app => app.url === sharePlugin.app?.url) ?? true)
+        plugin.pluginName === sharePlugin?.pluginName &&
+        plugin.title === sharePlugin?.serviceTitle &&
+        (plugin.apps?.some(app => app.url === sharePlugin?.app?.url) ?? true)
       );
-    }) ?? formatOption.plugins.find(plugin => plugin.pluginName !== '_openWith');
+    }) ?? formatOption?.plugins.find(plugin => plugin.pluginName !== '_openWith');
 
     setFormat(formatName);
-    setSharePlugin({
+    setSharePlugin(selectedSharePlugin && {
       pluginName: selectedSharePlugin.pluginName,
       serviceTitle: selectedSharePlugin.title,
-      app: selectedSharePlugin.apps ? sharePlugin.app : undefined
+      app: selectedSharePlugin.apps ? sharePlugin?.app : undefined
     });
     updateFps(Math.min(originalFps, fpsHistory[formatName]), formatName);
   };

@@ -3,7 +3,6 @@ import {useRef, useState, useEffect} from 'react';
 
 const useVideoControls = () => {
   const videoRef = useRef<HTMLVideoElement>();
-  const currentWindow = require('../../utils/electron-remote').getCurrentWindow();
   const wasPaused = useRef(true);
   const transitioningPauseState = useRef<Promise<void>>();
 
@@ -18,11 +17,22 @@ const useVideoControls = () => {
         await transitioningPauseState.current;
         setIsPaused(false);
       } catch {}
+    } else if (videoRef.current) {
+      setIsPaused(false);
     }
   };
 
   const pause = async () => {
-    if (videoRef.current && !videoRef.current.paused) {
+    if (!videoRef.current) {
+      return;
+    }
+
+    if (videoRef.current.paused) {
+      setIsPaused(true);
+      return;
+    }
+
+    if (!videoRef.current.paused) {
       try {
         await transitioningPauseState.current;
       } catch {} finally {
@@ -30,6 +40,22 @@ const useVideoControls = () => {
         setIsPaused(true);
       }
     }
+  };
+
+  const holdFrame = () => {
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+  };
+
+  const resumeAfterHold = async () => {
+    if (videoRef.current?.paused) {
+      try {
+        await videoRef.current.play();
+      } catch {}
+    }
+
+    setIsPaused(false);
   };
 
   const mute = () => {
@@ -54,7 +80,7 @@ const useVideoControls = () => {
   const videoProps = {
     onCanPlayThrough: hasStarted ? undefined : () => {
       setHasStarted(true);
-      if (currentWindow.isFocused()) {
+      if (document.hasFocus()) {
         play();
       }
     },
@@ -69,7 +95,7 @@ const useVideoControls = () => {
       }
     },
     onEnded: () => {
-      play();
+      setIsPaused(true);
     }
   };
 
@@ -87,12 +113,12 @@ const useVideoControls = () => {
       }
     };
 
-    currentWindow.addListener('blur', blurListener);
-    currentWindow.addListener('focus', focusListener);
+    window.addEventListener('blur', blurListener);
+    window.addEventListener('focus', focusListener);
 
     return () => {
-      currentWindow.removeListener('blur', blurListener);
-      currentWindow.removeListener('focus', focusListener);
+      window.removeEventListener('blur', blurListener);
+      window.removeEventListener('focus', focusListener);
     };
   }, []);
 
@@ -102,6 +128,8 @@ const useVideoControls = () => {
     setVideoRef,
     pause,
     play,
+    holdFrame,
+    resumeAfterHold,
     mute,
     unmute,
     videoProps

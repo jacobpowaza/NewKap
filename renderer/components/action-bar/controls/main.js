@@ -11,6 +11,7 @@ import {
   ExitFullscreenIcon
 } from '../../../vectors';
 import {connect, ActionBarContainer, CropperContainer} from '../../../containers';
+import kap from '../../../utils/kap';
 
 const mainStyle = css`
   .main {
@@ -23,14 +24,6 @@ const mainStyle = css`
 
 const MainControls = {};
 
-const remote = require('../../../utils/electron-remote');
-let menu;
-
-const buildMenu = async ({selectedApp}) => {
-  const {buildWindowsMenu} = remote.require('./utils/windows');
-  menu = await buildWindowsMenu(selectedApp);
-};
-
 class Left extends React.Component {
   state = {};
 
@@ -38,7 +31,6 @@ class Left extends React.Component {
     const {selectedApp} = nextProps;
 
     if (selectedApp !== previousState.selectedApp) {
-      buildMenu({selectedApp});
       return {selectedApp};
     }
 
@@ -53,7 +45,7 @@ class Left extends React.Component {
         <div className="crop">
           <CropIcon tabIndex={advanced ? -1 : 0} onClick={toggleAdvanced}/>
         </div>
-        <IconMenu isMenu icon={ApplicationsIcon} tabIndex={advanced ? -1 : 0} active={Boolean(selectedApp)} onOpen={menu && menu.popup}/>
+        <IconMenu isMenu icon={ApplicationsIcon} tabIndex={advanced ? -1 : 0} active={Boolean(selectedApp)} onOpen={position => kap.menu.popupWindows(selectedApp, position)}/>
         <style jsx>{mainStyle}</style>
         <style jsx>{`
           .crop {
@@ -85,8 +77,7 @@ MainControls.Left = connect(
 
 class Right extends React.Component {
   onCogMenuClick = async () => {
-    const cogMenu = await require('../../../utils/electron-remote').require('./menus/cog').getCogMenuAsync();
-    cogMenu.popup();
+    await kap.menu.popupCog();
   };
 
   render() {

@@ -1,14 +1,11 @@
-import {BrowserWindow} from 'electron';
-import {enable as enableRemote} from '@electron/remote/main';
-import {promisify} from 'util';
-import pEvent from 'p-event';
+import {ipcMain} from 'electron';
 
 import {ipcMain as ipc} from 'electron-better-ipc';
-import {loadRoute} from '../utils/routes';
 import {track} from '../common/analytics';
+import KapWindow from './kap-window';
 import {windowManager} from './manager';
 
-let prefsWindow: BrowserWindow | undefined;
+let prefsKapWindow: KapWindow | undefined;
 
 export type PreferencesWindowOptions = any;
 
@@ -16,20 +13,24 @@ const openPrefsWindow = async (options?: PreferencesWindowOptions) => {
   track('preferences/opened');
   windowManager.cropper?.close();
 
+  const prefsWindow = prefsKapWindow?.browserWindow;
   if (prefsWindow) {
     if (options) {
       ipc.callRenderer(prefsWindow, 'options', options);
     }
 
     prefsWindow.show();
+    prefsWindow.focus();
     return prefsWindow;
   }
 
-  prefsWindow = new BrowserWindow({
+  const newPrefsKapWindow = new KapWindow({
     title: 'Preferences',
-    width: 480,
-    height: 480,
-    resizable: false,
+    width: 620,
+    height: 620,
+    minWidth: 560,
+    minHeight: 520,
+    resizable: true,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -38,46 +39,53 @@ const openPrefsWindow = async (options?: PreferencesWindowOptions) => {
     frame: false,
     transparent: true,
     vibrancy: 'window',
-    webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false
-    } as any
+    dock: true,
+    route: 'preferences'
   });
+  prefsKapWindow = newPrefsKapWindow;
+
+  const newPrefsWindow = newPrefsKapWindow.browserWindow;
 
   const titlebarHeight = 85;
-  prefsWindow.setSheetOffset(titlebarHeight);
+  newPrefsWindow.setSheetOffset(titlebarHeight);
 
-  prefsWindow.webContents.on('render-process-gone', (_event, details) => {
+  newPrefsWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('[preferences] render process gone', details);
   });
 
-  prefsWindow.on('close', () => {
-    prefsWindow = undefined;
+  const rendererReadyPromise = new Promise<void>(resolve => {
+    const handleReady = (event: Electron.IpcMainEvent) => {
+      if (event.sender === newPrefsWindow.webContents) {
+        ipcMain.removeListener('preferences-renderer-ready', handleReady);
+        resolve();
+      }
+    };
+
+    ipcMain.on('preferences-renderer-ready', handleReady);
+    newPrefsWindow.once('closed', () => ipcMain.removeListener('preferences-renderer-ready', handleReady));
   });
 
-  loadRoute(prefsWindow, 'preferences');
-  enableRemote(prefsWindow.webContents);
+  newPrefsWindow.on('close', () => {
+    prefsKapWindow = undefined;
+  });
 
-  await pEvent(prefsWindow.webContents, 'did-finish-load');
+  await Promise.race([
+    rendererReadyPromise,
+    new Promise(resolve => {
+      setTimeout(resolve, 500);
+    })
+  ]);
 
   if (options) {
-    ipc.callRenderer(prefsWindow, 'options', options);
+    ipc.callRenderer(newPrefsWindow, 'options', options);
   }
 
-  ipc.callRenderer(prefsWindow, 'mount');
-
-  // @ts-expect-error
-  await promisify(ipc.answerRenderer)('preferences-ready');
-
-  prefsWindow.show();
-  return prefsWindow;
+  await newPrefsKapWindow.whenReady();
+  return newPrefsWindow;
 };
 
 const closePrefsWindow = () => {
-  if (prefsWindow) {
-    prefsWindow.close();
-  }
+  prefsKapWindow?.browserWindow.close();
 };
 
 ipc.answerRenderer('open-preferences', openPrefsWindow);

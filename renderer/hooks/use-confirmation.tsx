@@ -1,4 +1,5 @@
 import {useCallback} from 'react';
+import kap from '../utils/kap';
 
 interface UseConfirmationOptions {
   message: string;
@@ -12,9 +13,7 @@ export const useConfirmation = (
   options: UseConfirmationOptions
 ) => {
   return useCallback(() => {
-    const remote = require('../utils/electron-remote');
-
-    const buttonIndex = remote.dialog.showMessageBoxSync(remote.getCurrentWindow(), {
+    const buttonIndex = kap.dialog.showMessageBoxSync({
       type: 'question',
       buttons: [
         options.confirmButtonText,
@@ -29,5 +28,5 @@ export const useConfirmation = (
     if (buttonIndex === 0) {
       callback();
     }
-  }, [callback]);
+  }, [callback, options]);
 };

@@ -1,6 +1,6 @@
-import electron from 'electron';
 import React from 'react';
 import PropTypes from 'prop-types';
+import kap from '../../../../utils/kap';
 
 import Item from '../../item';
 import Switch from '../../item/switch';
@@ -84,7 +84,7 @@ const Plugin = ({plugin, checked, disabled, onTransitionEnd, onClick, loading, o
 
   const onTitleClick = () => {
     if (plugin.link) {
-      electron.shell.openExternal(plugin.link);
+      kap.shell.openExternal(plugin.link);
     }
   };
 

@@ -263,7 +263,7 @@ export const setUpExportsListeners = () => {
     };
 
     if (!video) {
-      return;
+      throw new Error(`Cannot start export because the source video is unavailable: ${filePath}`);
     }
 
     if (pluginOptions.share.pluginName === '_saveToDisk') {
@@ -289,7 +289,7 @@ export const setUpExportsListeners = () => {
     });
 
     if (!exportPlugin || !exportService) {
-      return;
+      throw new Error(`Cannot start export because the ${pluginOptions.share.serviceTitle} export service is unavailable.`);
     }
 
     const newExport = new Export(

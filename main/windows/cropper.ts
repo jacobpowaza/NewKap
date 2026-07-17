@@ -1,13 +1,20 @@
 import {windowManager} from './manager';
 import {BrowserWindow, systemPreferences, dialog, screen, Display, app, globalShortcut, ipcMain} from 'electron';
-import {enable as enableRemote} from '@electron/remote/main';
+import path from 'path';
 
 import {settings} from '../common/settings';
+import {validateCropperBounds} from '../common/cropper-bounds';
 import {hasMicrophoneAccess, ensureMicrophonePermissions, openSystemPreferences, ensureScreenCapturePermissions} from '../common/system-permissions';
 import {loadRoute} from '../utils/routes';
 import {MacWindow} from '../utils/windows';
 const croppers = new Map<number, BrowserWindow>();
 const readyCroppers = new Set<number>();
+const cropperDisplayState = new Map<number, {
+  activeDisplayId?: number;
+  display: Display;
+  sessionId: number;
+}>();
+const cropperReadyResolvers = new Map<number, () => void>();
 let notificationId: number | undefined;
 let isOpen = false;
 let openingPromise: Promise<void> | undefined;
@@ -66,12 +73,11 @@ const createCropper = (display: Display, activeDisplayId?: number, sessionId = o
     skipTaskbar: true,
     show: false,
     webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false
-    } as any
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, '..', 'preload.js')
+    }
   });
-  enableRemote(cropper.webContents);
   cropper.setIgnoreMouseEvents(true);
 
   loadRoute(cropper, 'cropper').catch(error => {
@@ -82,8 +88,7 @@ const createCropper = (display: Display, activeDisplayId?: number, sessionId = o
   cropper.setAlwaysOnTop(true, 'screen-saver', 1);
 
   cropper.webContents.on('did-finish-load', () => {
-    readyCroppers.add(cropper.id);
-    sendDisplayInfo(cropper, display, activeDisplayId, sessionId);
+    cropperDisplayState.set(cropper.id, {activeDisplayId, display, sessionId});
   });
 
   cropper.webContents.on('before-input-event', (event, input) => {
@@ -128,8 +133,11 @@ const createCropper = (display: Display, activeDisplayId?: number, sessionId = o
     }
 
     readyCroppers.delete(cropper.id);
+    cropperDisplayState.delete(cropper.id);
+    cropperReadyResolvers.delete(cropper.id);
   });
 
+  cropperDisplayState.set(cropper.id, {activeDisplayId, display, sessionId});
   croppers.set(id, cropper);
   return cropper;
 };
@@ -168,6 +176,8 @@ const destroyAllCroppers = () => {
     cropper.destroy();
     croppers.delete(id);
     readyCroppers.delete(cropper.id);
+    cropperDisplayState.delete(cropper.id);
+    cropperReadyResolvers.delete(cropper.id);
   }
 
   isOpen = false;
@@ -189,8 +199,8 @@ const sendDisplayInfo = (cropper: BrowserWindow, display: Display, activeDisplay
   };
 
   if (isActive) {
-    const savedCropper = settings.get('cropper', {});
-    if ((savedCropper as any).displayId === id) {
+    const savedCropper = validateCropperBounds(settings.get('cropper'), {id, width, height});
+    if (savedCropper) {
       displayInfo.cropper = savedCropper;
     }
   }
@@ -211,9 +221,9 @@ const waitForCropperReady = async (cropper: BrowserWindow): Promise<void> => {
 
     const cleanup = () => {
       clearTimeout(timeout);
-      cropper.webContents.removeListener('did-finish-load', handleReady);
       cropper.webContents.removeListener('did-fail-load', handleFailure);
       cropper.webContents.removeListener('render-process-gone', handleGone);
+      cropperReadyResolvers.delete(cropper.id);
     };
 
     const handleReady = () => {
@@ -231,9 +241,9 @@ const waitForCropperReady = async (cropper: BrowserWindow): Promise<void> => {
       reject(new Error(`Cropper window ${cropper.id} renderer exited: ${details.reason}`));
     };
 
-    cropper.webContents.once('did-finish-load', handleReady);
     cropper.webContents.once('did-fail-load', handleFailure);
     cropper.webContents.once('render-process-gone', handleGone);
+    cropperReadyResolvers.set(cropper.id, handleReady);
   });
 };
 
@@ -257,8 +267,11 @@ const ensureCroppers = async (activeDisplayId: number, sessionId: number): Promi
     const existing = croppers.get(display.id);
 
     if (existing && !existing.isDestroyed()) {
+      cropperDisplayState.set(existing.id, {activeDisplayId, display, sessionId});
       if (readyCroppers.has(existing.id)) {
         sendDisplayInfo(existing, display, activeDisplayId, sessionId);
+      } else {
+        newCropperPromises.push(waitForCropperReady(existing));
       }
     } else {
       const cropper = createCropper(display, activeDisplayId, sessionId);
@@ -335,10 +348,6 @@ const openCropperWindow = async () => {
         cropper.setIgnoreMouseEvents(true);
         cropper.setVisibleOnAllWorkspaces(false);
         cropper.showInactive();
-      }
-
-      if (process.platform === 'darwin') {
-        app.setActivationPolicy('accessory');
       }
 
       croppers.get(activeDisplayId)?.focus();
@@ -487,10 +496,33 @@ const handleControlsReady = (event: Electron.IpcMainEvent, payload?: {sessionId?
   cropper.setIgnoreMouseEvents(false);
 };
 
+const handleRendererReady = (event: Electron.IpcMainEvent, payload?: {sessionId?: number}) => {
+  const cropper = BrowserWindow.fromWebContents(event.sender);
+  if (!isOpen || !cropper || ![...croppers.values()].includes(cropper)) {
+    return;
+  }
+
+  const displayState = cropperDisplayState.get(cropper.id);
+  if (!displayState) {
+    return;
+  }
+
+  if (typeof payload?.sessionId === 'number' && payload.sessionId !== displayState.sessionId) {
+    return;
+  }
+
+  readyCroppers.add(cropper.id);
+  sendDisplayInfo(cropper, displayState.display, displayState.activeDisplayId, displayState.sessionId);
+  cropperReadyResolvers.get(cropper.id)?.();
+  console.log('[cropper] renderer listening', {sessionId: displayState.sessionId, windowId: cropper.id});
+};
+
 ipcMain.on('cropper-controls-ready', handleControlsReady);
+ipcMain.on('cropper-renderer-ready', handleRendererReady);
 
 app.on('before-quit', () => {
   ipcMain.removeListener('cropper-controls-ready', handleControlsReady);
+  ipcMain.removeListener('cropper-renderer-ready', handleRendererReady);
   destroyAllCroppers();
 });
 

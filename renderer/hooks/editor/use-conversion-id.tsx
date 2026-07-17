@@ -1,6 +1,7 @@
 import {CreateExportOptions} from 'common/types';
-import {ipcRenderer} from 'electron-better-ipc';
+import {ipcRenderer} from '../../utils/ipc';
 import {createContext, PropsWithChildren, useContext, useMemo, useState} from 'react';
+import {requireConversionId} from '../../../main/common/export-start';
 
 const ConversionIdContext = createContext<{
   conversionId: string;
@@ -15,7 +16,7 @@ export const ConversionIdContextProvider = (props: PropsWithChildren<Record<stri
 
   const startConversion = async (options: CreateExportOptions) => {
     const id = await ipcRenderer.callMain<CreateExportOptions, string>('create-export', options);
-    setConversionId(id);
+    setConversionId(requireConversionId(id));
   };
 
   const updateConversionId = (id: string) => {

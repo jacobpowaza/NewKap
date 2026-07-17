@@ -1,14 +1,15 @@
 import {useState, useEffect, useMemo} from 'react';
 import useDarkMode from '../hooks/dark-mode';
-const remote = require('./electron-remote');
+import kap from './kap';
 
 const GlobalStyles = () => {
-  const [accentColor, setAccentColor] = useState(remote.systemPreferences.getAccentColor());
+  const [accentColor, setAccentColor] = useState('007aff');
   const isDarkMode = useDarkMode();
 
   const systemColors = useMemo(() => {
+    const colors = kap.system.getSystemColors(systemColorNames);
     return systemColorNames
-      .map(name => `--system-${name}: ${remote.systemPreferences.getColor(name as any)};`)
+      .map(name => `--system-${name}: ${colors[name]};`)
       .join('\n');
   }, [isDarkMode]);
 
@@ -17,11 +18,7 @@ const GlobalStyles = () => {
   };
 
   useEffect(() => {
-    remote.systemPreferences.on('accent-color-changed', updateAccentColor);
-
-    // Return () => {
-    //   api.systemPreferences.off('accent-color-changed', updateAccentColor);
-    // };
+    return kap.system.onAccentColorChanged(updateAccentColor);
   }, []);
 
   return (

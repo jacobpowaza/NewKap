@@ -1,7 +1,7 @@
 import {app, Menu} from 'electron';
 import path from 'path';
 import {MenuItemId, MenuOptions} from './utils';
-import {getAboutMenuItem, getExportHistoryMenuItem, getOpenFileMenuItem, getPreferencesMenuItem, getSendFeedbackMenuItem} from './common';
+import {getAboutMenuItem, getCheckForUpdatesMenuItem, getExportHistoryMenuItem, getOpenFileMenuItem, getPreferencesMenuItem, getSendFeedbackMenuItem} from './common';
 import {getAudioDevices, getDefaultInputDevice} from '../utils/devices';
 import {settings} from '../common/settings';
 import {defaultInputDeviceId} from '../common/constants';
@@ -27,12 +27,48 @@ const getStartRecordingItem = (): MenuOptions[number] => ({
   click: startOrOpenRecording
 });
 
-const getCountdownItem = (): MenuOptions[number] => ({
-  label: 'Countdown',
-  type: 'checkbox',
-  checked: settings.get('showCountdown'),
-  click: menuItem => settings.set('showCountdown', menuItem.checked)
-});
+const getScreenshotItem = (): MenuOptions[number] => {
+  const shortcut = settings.get<string, string>('shortcuts.captureScreenshot');
+
+  return {
+    id: MenuItemId.captureScreenshot,
+    label: 'Take Screenshot',
+    accelerator: menuAccelerator(shortcut),
+    toolTip: shortcut ? `Take a screenshot (${shortcut})` : 'Take a screenshot. Configure its keybind in Preferences → Keybinds.',
+    click: () => windowManager.cropper?.open()
+  };
+};
+
+const setCountdownDuration = (duration: number) => {
+  settings.set('countdownDuration', duration);
+  settings.set('showCountdown', duration > 0);
+};
+
+const getCountdownItem = (): MenuOptions[number] => {
+  const showCountdown = settings.get('showCountdown');
+  const countdownDuration = showCountdown ? settings.get('countdownDuration') : 0;
+
+  return {
+    label: 'Countdown',
+    submenu: [
+      {
+        label: 'None',
+        type: 'radio',
+        checked: countdownDuration === 0,
+        click: () => setCountdownDuration(0)
+      },
+      {
+        type: 'separator'
+      },
+      ...[3, 5, 10].map(duration => ({
+        label: `${duration} seconds`,
+        type: 'radio' as const,
+        checked: countdownDuration === duration,
+        click: () => setCountdownDuration(duration)
+      }))
+    ]
+  };
+};
 
 const getCursorItem = (): MenuOptions[number] => ({
   label: 'Show Cursor',
@@ -81,6 +117,7 @@ const getBasicAudioItem = (): MenuOptions[number] => ({
 
 const getQuickSettings = (): MenuOptions => [
   getStartRecordingItem(),
+  getScreenshotItem(),
   {type: 'separator'},
   getCountdownItem(),
   getCursorItem(),
@@ -96,6 +133,7 @@ export const buildBasicCogMenu = (): MenuOptions => [
   getExportHistoryMenuItem(),
   {type: 'separator'},
   getAboutMenuItem(),
+  getCheckForUpdatesMenuItem(),
   getSendFeedbackMenuItem(),
   {type: 'separator'},
   {label: 'Quit Kap', accelerator: 'Command+Q', click: () => app.quit()}
@@ -167,6 +205,7 @@ const getPluginsItem = (): MenuOptions[number] => {
 
 const getCogMenuTemplate = async (): Promise<MenuOptions> => [
   getStartRecordingItem(),
+  getScreenshotItem(),
   {type: 'separator'},
   getCountdownItem(),
   getCursorItem(),
@@ -179,6 +218,7 @@ const getCogMenuTemplate = async (): Promise<MenuOptions> => [
   getExportHistoryMenuItem(),
   {type: 'separator'},
   getAboutMenuItem(),
+  getCheckForUpdatesMenuItem(),
   getSendFeedbackMenuItem(),
   {type: 'separator'},
   {label: 'Quit Kap', accelerator: 'Command+Q', click: () => app.quit()}

@@ -1,5 +1,5 @@
-const remote = require('../utils/electron-remote');
+import kap from '../utils/kap';
 
 export const useCurrentWindow = () => {
-  return remote.getCurrentWindow();
+  return kap.window;
 };

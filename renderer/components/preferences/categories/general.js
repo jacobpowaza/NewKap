@@ -1,7 +1,7 @@
-import electron from 'electron';
 import React from 'react';
 import PropTypes from 'prop-types';
 import tildify from 'tildify';
+import kap from '../../../utils/kap';
 
 import {connect, PreferencesContainer} from '../../../containers';
 
@@ -9,7 +9,7 @@ import Item from '../item';
 import Switch from '../item/switch';
 import Button from '../item/button';
 import Select from '../item/select';
-import ShortcutInput from '../shortcut-input';
+import KeyboardNumberInput from '../../keyboard-number-input';
 
 import Category from './category';
 
@@ -20,16 +20,28 @@ class General extends React.Component {
     category: 'general'
   };
 
-  state = {};
+  state = {
+    checkingForUpdate: false
+  };
 
   componentDidMount() {
     this.setState({
-      showCursorSupported: require('../../../utils/electron-remote').require('macos-version').isGreaterThanOrEqualTo('10.13')
+      showCursorSupported: kap.system.isMacosGreaterThanOrEqualTo('10.13')
     });
   }
 
   openKapturesDir = () => {
-    electron.shell.openPath(this.props.kapturesDir);
+    kap.shell.openPath(this.props.kapturesDir);
+  };
+
+  checkForUpdates = async () => {
+    this.setState({checkingForUpdate: true});
+
+    try {
+      await kap.updater.check();
+    } finally {
+      this.setState({checkingForUpdate: false});
+    }
   };
 
   render() {
@@ -40,11 +52,10 @@ class General extends React.Component {
       showCursor,
       highlightClicks,
       record60fps,
-      enableShortcuts,
       loopExports,
-      showCountdown,
       countdownDuration,
       toggleSetting,
+      setCountdownDuration,
       toggleRecordAudio,
       audioInputDeviceId,
       setAudioInputDeviceId,
@@ -52,19 +63,16 @@ class General extends React.Component {
       recordAudio,
       pickKapturesDir,
       setOpenOnStartup,
-      updateShortcut,
-      toggleShortcuts,
       category,
       lossyCompression,
       recordingQuality,
       defaultExportFormat,
       showNotifications,
-      playNotificationSound,
-      shortcuts,
-      shortcutMap
+      playNotificationSound
     } = this.props;
 
-    const {showCursorSupported} = this.state;
+    const {showCursorSupported, checkingForUpdate} = this.state;
+    const {version} = kap.app.getInfo();
 
     const devices = audioDevices.map(device => ({
       label: device.name,
@@ -74,7 +82,6 @@ class General extends React.Component {
     const kapturesDirPath = tildify(kapturesDir);
     const tabIndex = category === 'general' ? 0 : -1;
     const fpsOptions = [{label: '30 FPS', value: false}, {label: '60 FPS', value: true}];
-    const countdownOptions = [1, 3, 5, 10].map(seconds => ({label: `${seconds} sec`, value: seconds}));
     const qualityOptions = [
       {label: 'Standard', value: 'standard'},
       {label: 'High', value: 'high'},
@@ -91,6 +98,7 @@ class General extends React.Component {
 
     return (
       <Category>
+        <div className="section-heading"><h2>Capture</h2><span>Recording appearance, timing, audio, and quality</span></div>
         {
           showCursorSupported &&
           <Item
@@ -125,26 +133,6 @@ class General extends React.Component {
           </Item>
         }
         <Item
-          key="enableShortcuts"
-          parentItem
-          title="Keyboard shortcuts"
-          subtitle="Toggle and customise keyboard shortcuts"
-          help="You can paste any valid Electron accelerator string like Command+Shift+5"
-        >
-          <Switch tabIndex={tabIndex} checked={enableShortcuts} onClick={toggleShortcuts}/>
-        </Item>
-        {
-          enableShortcuts && Object.entries(shortcutMap).map(([key, title]) => (
-            <Item key={key} subtitle={title}>
-              <ShortcutInput
-                shortcut={shortcuts[key]}
-                tabIndex={tabIndex}
-                onChange={shortcut => updateShortcut(key, shortcut)}
-              />
-            </Item>
-          ))
-        }
-        <Item
           key="loopExports"
           title="Loop exports"
           subtitle="Infinitely loop exports when supported"
@@ -152,23 +140,22 @@ class General extends React.Component {
           <Switch tabIndex={tabIndex} checked={loopExports} onClick={() => toggleSetting('loopExports')}/>
         </Item>
         <Item
-          key="showCountdown"
-          parentItem
-          title="Show countdown"
-          subtitle="Pause before recording begins"
+          key="countdownDuration"
+          title="Countdown"
+          subtitle="Seconds before recording begins. Use 0 for none."
         >
-          <Switch tabIndex={tabIndex} checked={showCountdown} onClick={() => toggleSetting('showCountdown')}/>
-        </Item>
-        {
-          showCountdown &&
-          <Item key="countdownDuration" subtitle="Countdown duration">
-            <Select
+          <div className="countdown-input">
+            <KeyboardNumberInput
               tabIndex={tabIndex}
-              options={countdownOptions}
-              selected={countdownDuration}
-              onSelect={value => toggleSetting('countdownDuration', value)}/>
-          </Item>
-        }
+              min={0}
+              max={60}
+              maxLength="2"
+              value={countdownDuration}
+              onChange={event => setCountdownDuration(event.currentTarget.value)}
+            />
+            <span>sec</span>
+          </div>
+        </Item>
         <Item
           key="recordAudio"
           parentItem
@@ -225,6 +212,7 @@ class General extends React.Component {
             selected={defaultExportFormat}
             onSelect={value => toggleSetting('defaultExportFormat', value)}/>
         </Item>
+        <div className="section-heading"><h2>App</h2><span>Startup, notifications, privacy, and file storage</span></div>
         <Item
           key="allowAnalytics"
           title="Allow analytics"
@@ -266,6 +254,17 @@ class General extends React.Component {
           <Button tabIndex={tabIndex} title="Choose" onClick={pickKapturesDir}/>
         </Item>
         <Item
+          key="checkForUpdates"
+          title="Software update"
+          subtitle={`Kap ${version}`}
+        >
+          <Button
+            tabIndex={tabIndex}
+            title={checkingForUpdate ? 'Checking…' : 'Check for Updates'}
+            onClick={this.checkForUpdates}
+          />
+        </Item>
+        <Item
           key="lossyCompression"
           parentItem
           title="Lossy GIF compression"
@@ -277,6 +276,53 @@ class General extends React.Component {
             onClick={() => toggleSetting('lossyCompression')}
           />
         </Item>
+        <style jsx>{`
+          .section-heading {
+            padding: 24px 16px 4px;
+          }
+
+          .section-heading h2 {
+            color: var(--title-color);
+            font-size: 16px;
+            line-height: 20px;
+            margin: 0;
+          }
+
+          .section-heading span {
+            color: var(--subtitle-color);
+            font-size: 12px;
+          }
+
+          .countdown-input {
+            display: flex;
+            align-items: center;
+            color: var(--subtitle-color);
+            font-size: 1.2rem;
+          }
+
+          .countdown-input :global(input) {
+            width: 56px;
+            height: 32px;
+            margin-right: 8px;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid var(--input-border-color);
+            border-radius: 4px;
+            background: var(--input-background-color);
+            color: var(--title-color);
+            box-shadow: var(--input-shadow);
+            font-size: 1.2rem;
+          }
+
+          .countdown-input :global(input):focus {
+            outline: none;
+            border-color: var(--kap);
+          }
+
+          .countdown-input :global(input):hover {
+            border-color: var(--input-hover-border-color);
+          }
+        `}</style>
       </Category>
     );
   }
@@ -286,7 +332,6 @@ General.propTypes = {
   showCursor: PropTypes.bool,
   highlightClicks: PropTypes.bool,
   record60fps: PropTypes.bool,
-  enableShortcuts: PropTypes.bool,
   toggleSetting: PropTypes.elementType.isRequired,
   toggleRecordAudio: PropTypes.elementType.isRequired,
   audioInputDeviceId: PropTypes.string,
@@ -297,15 +342,11 @@ General.propTypes = {
   openOnStartup: PropTypes.bool,
   allowAnalytics: PropTypes.bool,
   loopExports: PropTypes.bool,
-  showCountdown: PropTypes.bool,
   countdownDuration: PropTypes.number,
+  setCountdownDuration: PropTypes.elementType.isRequired,
   pickKapturesDir: PropTypes.elementType.isRequired,
   setOpenOnStartup: PropTypes.elementType.isRequired,
-  updateShortcut: PropTypes.elementType.isRequired,
-  toggleShortcuts: PropTypes.elementType.isRequired,
   category: PropTypes.string,
-  shortcutMap: PropTypes.object,
-  shortcuts: PropTypes.object,
   lossyCompression: PropTypes.bool,
   recordingQuality: PropTypes.string,
   defaultExportFormat: PropTypes.string,
@@ -320,7 +361,6 @@ export default connect(
     highlightClicks,
     record60fps,
     recordAudio,
-    enableShortcuts,
     audioInputDeviceId,
     audioDevices,
     kapturesDir,
@@ -334,15 +374,12 @@ export default connect(
     recordingQuality,
     defaultExportFormat,
     showNotifications,
-    playNotificationSound,
-    shortcuts,
-    shortcutMap
+    playNotificationSound
   }) => ({
     showCursor,
     highlightClicks,
     record60fps,
     recordAudio,
-    enableShortcuts,
     audioInputDeviceId,
     audioDevices,
     kapturesDir,
@@ -356,9 +393,7 @@ export default connect(
     recordingQuality,
     defaultExportFormat,
     showNotifications,
-    playNotificationSound,
-    shortcuts,
-    shortcutMap
+    playNotificationSound
   }),
   ({
     toggleSetting,
@@ -366,15 +401,13 @@ export default connect(
     setAudioInputDeviceId,
     pickKapturesDir,
     setOpenOnStartup,
-    updateShortcut,
-    toggleShortcuts
+    setCountdownDuration
   }) => ({
     toggleSetting,
     toggleRecordAudio,
     setAudioInputDeviceId,
     pickKapturesDir,
     setOpenOnStartup,
-    updateShortcut,
-    toggleShortcuts
+    setCountdownDuration
   })
 )(General);

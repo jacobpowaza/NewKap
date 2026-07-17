@@ -1,4 +1,3 @@
-import Head from 'next/head';
 // Import EditorPreview from '../components/editor/editor-preview';
 import combineUnstatedContainers from '../utils/combine-unstated-containers';
 import VideoMetadataContainer from '../components/editor/video-metadata-container';
@@ -8,8 +7,10 @@ import OptionsContainer from '../components/editor/options-container';
 import useEditorWindowState from 'hooks/editor/use-editor-window-state';
 import {ConversionIdContextProvider} from 'hooks/editor/use-conversion-id';
 import Editor from 'components/editor';
+import TimelineContainer from '../components/editor/timeline-container';
 
 const ContainerProvider = combineUnstatedContainers([
+  TimelineContainer,
   OptionsContainer,
   VideoMetadataContainer,
   VideoTimeContainer,
@@ -25,9 +26,6 @@ const EditorPage = () => {
 
   return (
     <div className="cover-window">
-      <Head>
-        <meta httpEquiv="Content-Security-Policy" content="media-src file:;"/>
-      </Head>
       <ConversionIdContextProvider>
         <ContainerProvider>
           <Editor/>
@@ -47,20 +45,20 @@ const EditorPage = () => {
           --slider-thumb-color: var(--storm);
         }
 
-        .preview-hover-container:hover .video-controls {
+        .video-player-container:hover .video-controls {
           bottom: 0;
         }
 
-        .preview-hover-container:not(:hover) .progress-bar-container {
+        .video-player-container:not(:hover) .progress-bar-container {
           bottom: 64px;
           width: 100%
         }
 
-        .preview-hover-container:not(:hover) .progress-bar-container .progress-bar {
+        .video-player-container:not(:hover) .progress-bar-container .progress-bar {
           border-radius: 0;
         }
 
-        .preview-hover-container:not(:hover) .progress-bar-container .slider {
+        .video-player-container:not(:hover) .progress-bar-container .slider {
           display: none;
         }
 

@@ -1,12 +1,10 @@
-import electron from 'electron';
 import {Container} from 'unstated';
-import {ipcRenderer as ipc} from 'electron-better-ipc';
+import kap from '../utils/kap';
+import {ipcRenderer as ipc} from '../utils/ipc';
 
 const SETTINGS_ANALYTICS_BLACKLIST = ['kapturesDir'];
 
 export default class PreferencesContainer extends Container {
-  remote = require('../utils/electron-remote');
-
   state = {
     category: 'general',
     tab: 'discover',
@@ -15,40 +13,45 @@ export default class PreferencesContainer extends Container {
 
   mount = async setOverlay => {
     this.setOverlay = setOverlay;
-    const {settings, shortcuts} = this.remote.require('./common/settings');
-    const {defaultInputDeviceId} = this.remote.require('./common/constants');
-    this.settings = settings;
-    this.defaultInputDeviceId = defaultInputDeviceId;
-    this.settings.shortcuts = shortcuts;
-    this.systemPermissions = this.remote.require('./common/system-permissions');
-    this.plugins = this.remote.require('./plugins').plugins;
-    this.track = this.remote.require('./common/analytics').track;
-    this.showError = this.remote.require('./utils/errors').showError;
+    this.settings = kap.settings;
+    this.defaultInputDeviceId = 'SYSTEM_DEFAULT';
+    this.systemPermissions = kap.permissions;
+    this.plugins = kap.plugins;
+    this.track = kap.track;
+    this.showError = error => console.error(error);
 
-    const pluginsInstalled = this.plugins.installedPlugins.sort((a, b) => a.prettyName.localeCompare(b.prettyName));
+    const pluginsInstalled = await this.plugins.getInstalled();
 
     this.fetchFromNpm();
 
+    const currentSettings = this.settings.getAll();
+
     this.setState({
       shortcuts: {},
-      ...this.settings.store,
-      openOnStartup: this.remote.app.getLoginItemSettings().openAtLogin,
+      ...currentSettings,
+      countdownDuration: currentSettings.showCountdown ? currentSettings.countdownDuration : 0,
+      openOnStartup: (await kap.app.getLoginItemSettings()).openAtLogin,
       pluginsInstalled,
       isMounted: true,
-      shortcutMap: this.settings.shortcuts
+      shortcutMap: {
+        triggerCropper: 'Start Recording',
+        stopRecording: 'Stop Recording',
+        pauseRecording: 'Pause Recording',
+        captureScreenshot: 'Capture Screenshot',
+        captureScreenshotClipboard: 'Capture Screenshot to Clipboard'
+      }
     });
 
-    if (this.settings.store.recordAudio) {
+    if (currentSettings.recordAudio) {
       this.getAudioDevices();
     }
   };
 
   getAudioDevices = async () => {
-    const {getAudioDevices, getDefaultInputDevice} = this.remote.require('./utils/devices');
-    const {audioInputDeviceId} = this.settings.store;
-    const {name: currentDefaultName} = getDefaultInputDevice() || {};
+    const {audioInputDeviceId} = this.settings.getAll();
+    const {name: currentDefaultName} = await kap.system.getDefaultInputDevice() || {};
 
-    const audioDevices = await getAudioDevices();
+    const audioDevices = await kap.system.getAudioDevices();
     const updates = {
       audioDevices: [
         {name: `System Default${currentDefaultName ? ` (${currentDefaultName})` : ''}`, id: this.defaultInputDeviceId},
@@ -86,7 +89,7 @@ export default class PreferencesContainer extends Container {
         this.scrollIntoView('discover', target.name);
         this.setState({category: 'plugins', tab: 'discover'});
 
-        const buttonIndex = this.remote.dialog.showMessageBoxSync(this.remote.getCurrentWindow(), {
+        const buttonIndex = kap.dialog.showMessageBoxSync({
           type: 'question',
           buttons: [
             'Install',
@@ -199,7 +202,7 @@ export default class PreferencesContainer extends Container {
     this.setOverlay(false);
   };
 
-  openPluginsFolder = () => electron.shell.openPath(this.plugins.pluginsDir);
+  openPluginsFolder = async () => kap.shell.openPath(await this.plugins.getPluginsDir());
 
   selectCategory = category => {
     this.setState({category});
@@ -218,6 +221,18 @@ export default class PreferencesContainer extends Container {
 
     this.setState({[setting]: newValue});
     this.settings.set(setting, newValue);
+  };
+
+  setCountdownDuration = value => {
+    const duration = Math.max(0, Math.min(60, Number.parseInt(value || 0, 10) || 0));
+
+    this.track(`preferences/setting/countdownDuration/${duration}`);
+    this.setState({
+      countdownDuration: duration,
+      showCountdown: duration > 0
+    });
+    this.settings.set('countdownDuration', duration);
+    this.settings.set('showCountdown', duration > 0);
   };
 
   toggleRecordAudio = async () => {
@@ -262,13 +277,11 @@ export default class PreferencesContainer extends Container {
   setOpenOnStartup = value => {
     const openOnStartup = typeof value === 'boolean' ? value : !this.state.openOnStartup;
     this.setState({openOnStartup});
-    this.remote.app.setLoginItemSettings({openAtLogin: openOnStartup});
+    kap.app.setLoginItemSettings({openAtLogin: openOnStartup});
   };
 
   pickKapturesDir = () => {
-    const {dialog, getCurrentWindow} = this.remote;
-
-    const directories = dialog.showOpenDialogSync(getCurrentWindow(), {
+    const directories = kap.dialog.showOpenDialogSync({
       properties: [
         'openDirectory',
         'createDirectory'

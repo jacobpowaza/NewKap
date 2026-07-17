@@ -1,5 +1,5 @@
 import {useEffect} from 'react';
-import {ipcRenderer} from 'electron-better-ipc';
+import {ipcRenderer} from '../utils/ipc';
 
 export const useShowWindow = (show: boolean) => {
   useEffect(() => {

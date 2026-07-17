@@ -9,7 +9,10 @@ const shortcutToAccelerator = require('../utils/shortcut-to-accelerator');
 
 export const shortcuts = {
   triggerCropper: 'Start Recording',
-  stopRecording: 'Stop Recording'
+  stopRecording: 'Stop Recording',
+  pauseRecording: 'Pause Recording',
+  captureScreenshot: 'Capture Screenshot',
+  captureScreenshotClipboard: 'Capture Screenshot to Clipboard'
 };
 
 export type RecordingQuality = 'standard' | 'high' | 'maximum';
@@ -46,6 +49,20 @@ interface Settings {
   enableShortcuts: boolean;
   shortcuts: {
     [key in keyof typeof shortcuts]: string
+  };
+  cropper: {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    ratio?: number[];
+    displayId?: number;
+  };
+  actionBar: {
+    x?: number;
+    y?: number;
+    ratioLocked?: boolean;
+    advanced?: boolean;
   };
   version: string;
 }
@@ -90,8 +107,8 @@ export const settings = new Store<Settings>({
     },
     countdownDuration: {
       type: 'integer',
-      minimum: 1,
-      maximum: 10,
+      minimum: 0,
+      maximum: 60,
       default: 3
     },
     audioInputDeviceId: {
@@ -157,6 +174,51 @@ export const settings = new Store<Settings>({
       properties: Object.fromEntries(Object.keys(shortcuts).map(key => [key, shortcutSchema])),
       default: {}
     },
+    cropper: {
+      type: 'object',
+      default: {},
+      properties: {
+        x: {
+          type: 'number'
+        },
+        y: {
+          type: 'number'
+        },
+        width: {
+          type: 'number'
+        },
+        height: {
+          type: 'number'
+        },
+        ratio: {
+          type: 'array',
+          items: {
+            type: 'number'
+          }
+        },
+        displayId: {
+          type: 'number'
+        }
+      }
+    },
+    actionBar: {
+      type: 'object',
+      default: {},
+      properties: {
+        x: {
+          type: 'number'
+        },
+        y: {
+          type: 'number'
+        },
+        ratioLocked: {
+          type: 'boolean'
+        },
+        advanced: {
+          type: 'boolean'
+        }
+      }
+    },
     version: {
       type: 'string',
       default: ''
@@ -173,6 +235,3 @@ if (settings.has('cropperShortcut')) {
   settings.set('shortcuts.triggerCropper', shortcutToAccelerator(settings.get('cropperShortcut')));
   settings.delete('cropperShortcut');
 }
-
-settings.set('cropper' as any, {});
-settings.set('actionBar' as any, {});

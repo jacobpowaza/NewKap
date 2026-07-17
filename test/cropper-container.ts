@@ -117,6 +117,43 @@ test('reopening the cropper clears stale drag state but keeps saved selection bo
   });
 });
 
+test('restored crop does not follow the cursor until a new drag starts', t => {
+  const {cropper, cursor} = setup();
+
+  cropper.setDisplay({
+    id: 1,
+    width: 800,
+    height: 600,
+    isActive: true,
+    cropper: {
+      x: 40,
+      y: 50,
+      width: 320,
+      height: 180,
+      ratio: [16, 9]
+    }
+  });
+
+  cursor.setCursor({pageX: 600, pageY: 500});
+  t.like(cropper.state, {
+    x: 40,
+    y: 50,
+    width: 320,
+    height: 180,
+    isMoving: false,
+    isResizing: false,
+    isPointerDown: false
+  });
+
+  cropper.startMoving({button: 0, pageX: 50, pageY: 60});
+  cursor.setCursor({pageX: 70, pageY: 90});
+  t.like(cropper.state, {
+    x: 60,
+    y: 80,
+    isMoving: true
+  });
+});
+
 test('dragging only begins after a valid press on the crop area or resize handle', t => {
   const {cropper, cursor} = setup();
 

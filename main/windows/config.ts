@@ -1,9 +1,9 @@
 'use strict';
 
 import {BrowserWindow} from 'electron';
-import {enable as enableRemote} from '@electron/remote/main';
 import {ipcMain as ipc} from 'electron-better-ipc';
 import pEvent from 'p-event';
+import path from 'path';
 import {loadRoute} from '../utils/routes';
 import {windowManager} from './manager';
 
@@ -22,14 +22,13 @@ const openConfigWindow = async (pluginName: string) => {
     parent: prefsWindow,
     modal: true,
     webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false
-    } as any
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, '..', 'preload.js')
+    }
   });
 
   loadRoute(configWindow, 'config');
-  enableRemote(configWindow.webContents);
 
   configWindow.webContents.on('did-finish-load', async () => {
     await ipc.callRenderer(configWindow, 'plugin', pluginName);
@@ -53,14 +52,13 @@ const openEditorConfigWindow = async (pluginName: string, serviceTitle: string, 
     parent: editorWindow,
     modal: true,
     webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false
-    } as any
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, '..', 'preload.js')
+    }
   });
 
   loadRoute(configWindow, 'config');
-  enableRemote(configWindow.webContents);
 
   configWindow.webContents.on('did-finish-load', async () => {
     await ipc.callRenderer(configWindow, 'edit-service', {pluginName, serviceTitle});

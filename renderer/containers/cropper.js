@@ -1,5 +1,6 @@
 import nearestNormalAspectRatio from 'nearest-normal-aspect-ratio';
 import {Container} from 'unstated';
+import kap from '../utils/kap';
 
 import {minHeight, minWidth, resizeTo, setScreenSize} from '../utils/inputs';
 
@@ -34,19 +35,10 @@ export const findRatioForSize = (width, height) => {
 };
 
 export default class CropperContainer extends Container {
-  remote = require('../utils/electron-remote');
-
   constructor() {
     super();
 
-    if (!this.remote) {
-      this.state = {};
-      return;
-    }
-
-    const {settings} = this.remote.require('./common/settings');
-    this.settings = settings;
-    this.settings.getSelectedInputDeviceId = this.remote.require('./utils/devices').getSelectedInputDeviceId;
+    this.settings = kap.settings;
 
     this.state = {
       isRecording: false,
@@ -374,7 +366,7 @@ export default class CropperContainer extends Container {
       });
 
       if (closeIfPicking) {
-        this.remote.getCurrentWindow().close();
+        kap.window.close();
       }
     } else {
       this.cursorContainer.removeCursorObserver(this.pick);
@@ -651,13 +643,12 @@ export default class CropperContainer extends Container {
       return;
     }
 
-    // Skip countdown if disabled in settings
-    if (!this.settings.get('showCountdown', true)) {
+    const countdownDuration = this.settings.get('showCountdown', true) ? this.settings.get('countdownDuration', 3) : 0;
+    if (countdownDuration <= 0) {
       this.doStartRecording();
       return;
     }
 
-    const countdownDuration = this.settings.get('countdownDuration', 3);
     this.setState({countdownValue: countdownDuration, countdown: true});
 
     const tick = () => {
@@ -682,12 +673,9 @@ export default class CropperContainer extends Container {
       return;
     }
 
-    const remote = require('../utils/electron-remote');
-    const {startRecording} = remote.require('./aperture');
-
     this.willStartRecording();
 
-    startRecording({
+    kap.cropper.startRecording({
       cropperBounds: {x, y, width, height},
       screenBounds: {width: screenWidth, height: screenHeight},
       displayId

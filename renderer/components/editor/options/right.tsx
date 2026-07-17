@@ -1,13 +1,16 @@
 import {GearIcon} from '../../../vectors';
 import OptionsContainer from '../options-container';
 import Select from './select';
-import {ipcRenderer as ipc} from 'electron-better-ipc';
+import {ipcRenderer as ipc} from '../../../utils/ipc';
 import useConversionIdContext from 'hooks/editor/use-conversion-id';
 import useEditorWindowState from 'hooks/editor/use-editor-window-state';
 import VideoTimeContainer from '../video-time-container';
 import VideoControlsContainer from '../video-controls-container';
+import VideoMetadataContainer from '../video-metadata-container';
 import useSharePlugins from 'hooks/editor/use-share-plugins';
 import useEditorOptions from 'hooks/editor/use-editor-options';
+import TimelineContainer from '../timeline-container';
+import {useState} from 'react';
 
 const FormatSelect = () => {
   const {formats, format, updateFormat} = OptionsContainer.useContainer();
@@ -127,42 +130,74 @@ const ConvertButton = () => {
   const {filePath} = useEditorWindowState();
   const {startTime, endTime} = VideoTimeContainer.useContainer();
   const {isMuted} = VideoControlsContainer.useContainer();
+  const {hasAudio} = VideoMetadataContainer.useContainer();
+  const {clips, isEdited} = TimelineContainer.useContainer();
   const {updatePluginUsage} = useEditorOptions();
+  const [isStarting, setIsStarting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const onClick = () => {
+  const onClick = async () => {
+    setErrorMessage('');
+
+    if (!options.format || !options.sharePlugin || !options.width || !options.height || !options.fps) {
+      setErrorMessage('Export options are still loading.');
+      return;
+    }
+
     const shouldCrop = true;
-    startConversion({
-      filePath,
-      conversionOptions: {
-        width: options.width,
-        height: options.height,
-        startTime,
-        endTime,
-        fps: options.fps,
-        shouldMute: isMuted,
-        shouldCrop,
-        editService: options.editPlugin ? {
-          pluginName: options.editPlugin.pluginName,
-          serviceTitle: options.editPlugin.title
-        } : undefined
-      },
-      format: options.format,
-      plugins: {
-        share: options.sharePlugin
-      }
-    });
+    setIsStarting(true);
 
-    updatePluginUsage({
-      format: options.format,
-      plugin: options.sharePlugin.pluginName
-    });
+    try {
+      await startConversion({
+        filePath,
+        conversionOptions: {
+          width: options.width,
+          height: options.height,
+          startTime,
+          endTime,
+          fps: options.fps,
+          shouldMute: isMuted,
+          hasAudio,
+          clips: isEdited ? clips : undefined,
+          shouldCrop,
+          editService: options.editPlugin ? {
+            pluginName: options.editPlugin.pluginName,
+            serviceTitle: options.editPlugin.title
+          } : undefined
+        },
+        format: options.format,
+        plugins: {
+          share: options.sharePlugin
+        }
+      });
+
+      updatePluginUsage?.({
+        format: options.format,
+        plugin: options.sharePlugin.pluginName
+      });
+    } catch (error) {
+      setErrorMessage((error as Error).message || 'Export failed to start.');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   return (
-    <button type="button" className="start-export" onClick={onClick}>
-      Convert
+    <div className="export-action">
+      <button type="button" className="start-export" disabled={isStarting} onClick={onClick}>
+        {isStarting ? 'Starting…' : 'Export'}
+      </button>
+      {errorMessage && <div className="export-error" role="alert">{errorMessage}</div>}
       <style jsx>{`
+        .export-action {
+          align-items: center;
+          display: flex;
+          gap: 8px;
+          position: relative;
+        }
+
         button {
+          -webkit-app-region: no-drag;
           padding: 4px 8px;
           background: rgba(255, 255, 255, 0.1);
           font-size: 12px;
@@ -181,11 +216,22 @@ const ConvertButton = () => {
           outline: none;
         }
 
+        button:disabled {
+          opacity: 0.58;
+        }
+
         .start-export {
           width: 72px;
         }
+
+        .export-error {
+          color: #ff8d87;
+          font-size: 11px;
+          line-height: 1.2;
+          max-width: 220px;
+        }
       `}</style>
-    </button>
+    </div>
   );
 };
 
@@ -227,8 +273,7 @@ const RightOptions = () => {
 
 export default RightOptions;
 
-// Import electron from 'electron';
-// import React from 'react';
+// Import React from 'react';
 // import PropTypes from 'prop-types';
 
 // import {connect, EditorContainer} from '../../../containers';
@@ -260,7 +305,6 @@ export default RightOptions;
 //           type: 'radio',
 //           checked: openWithApp && app.url === openWithApp.url,
 //           click: () => selectOpenWithApp(app),
-//           icon: remote.nativeImage.createFromDataURL(app.icon).resize({width: 16, height: 16})
 //         }));
 
 //         if (plugin.apps[0].isDefault) {

@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import remote from './electron-remote';
+import {popupMenu} from './menu-actions';
 
 let screenWidth = 0;
 let screenHeight = 0;
@@ -137,24 +137,15 @@ export const RATIOS = [
 ];
 
 const buildAspectRatioMenu = ({setRatio, ratio}) => {
-  if (!remote) {
-    return;
-  }
-
-  const {Menu, MenuItem} = remote;
   const selectedRatio = ratio.join(':');
-  const menu = new Menu();
-
-  for (const r of RATIOS) {
-    menu.append(
-      new MenuItem({
-        label: r,
-        type: 'radio',
-        checked: r === selectedRatio,
-        click: () => setRatio(r.split(':').map(d => Number.parseInt(d, 10)))
-      })
-    );
-  }
+  const template = RATIOS.map(r => (
+    {
+      label: r,
+      type: 'radio',
+      checked: r === selectedRatio,
+      click: () => setRatio(r.split(':').map(d => Number.parseInt(d, 10)))
+    }
+  ));
 
   const customOption = RATIOS.includes(selectedRatio) ? {
     label: 'Custom',
@@ -167,8 +158,10 @@ const buildAspectRatioMenu = ({setRatio, ratio}) => {
     checked: true
   };
 
-  menu.append(new MenuItem(customOption));
-  return menu;
+  template.push(customOption);
+  return {
+    popup: position => popupMenu(template, position)
+  };
 };
 
 const handleInputKeyPress = (onChange, min, max) => event => {

@@ -1,7 +1,7 @@
 {
   "name": "kap",
   "productName": "Kap",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Community-driven Kap fork focused on reliability and community maintenance",
   "license": "MIT",
   "repository": "jacobpowaza/NewKap",
@@ -37,7 +37,6 @@
     "name": "Kap"
   },
   "dependencies": {
-    "@electron/remote": "^2.1.3",
     "@sentry/browser": "^6.2.2",
     "@sentry/electron": "^2.4.0",
     "@sindresorhus/to-milliseconds": "^1.2.0",
@@ -262,8 +261,15 @@
     "files": [
       "static",
       "dist-js/**/*",
+      "!dist-js/**/*.map",
+      "!dist-js/.tsbuildinfo",
       "!renderer",
-      "renderer/out"
+      "renderer/out",
+      "!renderer/out/**/*.map",
+      "!**/*.map",
+      "!**/.DS_Store",
+      "!**/test/**",
+      "!**/tests/**"
     ],
     "mac": {
       "icon": "build/icon.icns",

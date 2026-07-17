@@ -32,10 +32,6 @@ const brandDevelopmentHost = () => {
   const iconHash = crypto.createHash('sha256').update(fs.readFileSync(iconPath)).digest('hex').slice(0, 12);
   const stampPath = path.join(path.dirname(appBundle), `.kap-branding-${require('electron/package.json').version}-${iconHash}`);
 
-  if (fs.existsSync(stampPath)) {
-    return;
-  }
-
   const setPlistValue = (plistPath, key, value) => {
     execFileSync('/usr/bin/plutil', ['-replace', key, '-string', value, plistPath]);
   };

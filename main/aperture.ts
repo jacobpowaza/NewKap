@@ -4,7 +4,7 @@ import {setCropperShortcutAction} from './global-accelerators';
 import {settings} from './common/settings';
 import {track} from './common/analytics';
 import {plugins} from './plugins';
-import {getAudioDevices, getCachedAudioDeviceId} from './utils/devices';
+import {getRecordingAudioDeviceId} from './utils/devices';
 import {showError} from './utils/errors';
 import {RecordServiceContext, RecordServiceState} from './plugins/service-context';
 import {setCurrentRecording, updatePluginState, stopCurrentRecording} from './recording-history';
@@ -114,18 +114,7 @@ export const startRecording = async (options: StartRecordingOptions) => {
     videoCodec
   };
 
-  if (recordAudio) {
-    // Use cached audio device ID to avoid synchronous blocking
-    const audioInputDeviceId = getCachedAudioDeviceId();
-    if (audioInputDeviceId) {
-      apertureOptions.audioDeviceId = audioInputDeviceId;
-    } else {
-      const [defaultAudioDevice] = await getAudioDevices();
-      apertureOptions.audioDeviceId = defaultAudioDevice?.id;
-    }
-  }
-
-  console.log(`Collected settings after ${(Date.now() - past) / 1000}s`);
+  const audioDeviceIdPromise = recordAudio ? getRecordingAudioDeviceId() : Promise.resolve(undefined);
 
   recordingPlugins = plugins
     .recordingPlugins
@@ -142,6 +131,13 @@ export const startRecording = async (options: StartRecordingOptions) => {
     serviceState.set(service.title, {persistedState: {}});
     track(`plugins/used/record/${plugin.name}`);
   }
+
+  const audioDeviceId = await audioDeviceIdPromise;
+  if (audioDeviceId) {
+    apertureOptions.audioDeviceId = audioDeviceId;
+  }
+
+  console.log(`Collected settings after ${(Date.now() - past) / 1000}s`);
 
   await callPlugins('willStartRecording');
 
@@ -317,6 +313,20 @@ export const resumeRecording = async () => {
     console.log(`Resume recording after ${(Date.now() - past) / 1000}s`);
   } catch (error) {
     track('recording/resumed/error');
+    showError(error as any, {title: 'Recording error', plugin: undefined});
+    cleanup();
+  }
+};
+
+export const togglePauseRecording = async () => {
+  if (!past) {
+    return;
+  }
+
+  try {
+    await (await aperture.isPaused() ? resumeRecording() : pauseRecording());
+  } catch (error) {
+    track('recording/pause-toggle/error');
     showError(error as any, {title: 'Recording error', plugin: undefined});
     cleanup();
   }

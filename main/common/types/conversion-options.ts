@@ -26,7 +26,20 @@ export type ConversionOptions = {
   fps: number;
   shouldCrop: boolean;
   shouldMute: boolean;
+  hasAudio?: boolean;
+  clips?: TimelineClip[];
   editService?: EditServiceInfo;
+};
+
+export type TimelineClip = {
+  id: string;
+  startTime: number;
+  endTime: number;
+  freezeDuration?: number;
+  speed: number;
+  brightness: number;
+  contrast: number;
+  saturation: number;
 };
 
 export enum ExportStatus {
