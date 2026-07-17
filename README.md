@@ -2,7 +2,7 @@
   <img src="renderer/public/static/kap-icon.png" width="96" height="96" alt="Kap icon">
 </p>
 
-# Kap
+<h1 align="center">Kap</h1>
 
 Kap is a lightweight macOS screen recorder and screenshot tool that lives in the menu bar. This repository is a community-maintained Kap fork that keeps the original workflow alive on modern macOS and Electron while adding the v5.1 editor, screenshot, packaging, and branding fixes.
 
@@ -63,8 +63,6 @@ Main features and improvements:
   <tr>
     <td width="50%">
       <img src="docs/previews/editor-preview.gif" alt="Kap v5.1 editor timeline preview">
-      <br>
-      <em>Yes, this GIF was recorded on Kap v5.1.</em>
     </td>
     <td width="50%">
       <img src="docs/previews/screenshot-edit-preview.gif" alt="Kap screenshot editing preview">
@@ -73,6 +71,8 @@ Main features and improvements:
   <tr>
     <td colspan="2">
       <img src="docs/previews/upgraded-settings.gif" alt="Kap upgraded settings preview">
+      <br>
+      <em>Yes, this GIF was recorded on Kap v5.1.</em>
     </td>
   </tr>
 </table>
