@@ -3,7 +3,6 @@ import {UseConversion, UseConversionState} from 'hooks/editor/use-conversion';
 import {ExportStatus} from 'common/types';
 import useEditorWindowState from 'hooks/editor/use-editor-window-state';
 import useConversionIdContext from 'hooks/editor/use-conversion-id';
-import {flags} from '../../../common/flags';
 import ReactTooltip from 'react-tooltip';
 import {useEffect, useRef, useState} from 'react';
 import classNames from 'classnames';
@@ -12,7 +11,7 @@ import kap from '../../../utils/kap';
 const VideoPreview = ({conversion, cancel, showInFolder}: {conversion: UseConversionState; cancel: () => any; showInFolder: () => any}) => {
   const {conversionId} = useConversionIdContext();
   const {filePath} = useEditorWindowState();
-  const [tooltipShowing, setTooltipShowing] = useState(!flags.get('editorDragTooltip'));
+  const [tooltipShowing, setTooltipShowing] = useState(!kap.flags.get('editorDragTooltip'));
   const tooltipRef = useRef();
   const src = `file://${filePath}`;
 
@@ -42,7 +41,7 @@ const VideoPreview = ({conversion, cancel, showInFolder}: {conversion: UseConver
   };
 
   const onTooltipHide = () => {
-    flags.set('editorDragTooltip', true);
+    kap.flags.set('editorDragTooltip', true);
   };
 
   return (

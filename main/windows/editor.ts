@@ -39,6 +39,7 @@ const open = async (video: Video) => {
     width: MIN_VIDEO_WIDTH,
     height: MIN_WINDOW_HEIGHT,
     backgroundColor: '#222222',
+    dock: true,
     webPreferences: {
       webSecurity: !is.development // Disable webSecurity in dev to load video over file:// protocol while serving over insecure http, this is not needed in production where we use file:// protocol for html serving.
     },

@@ -1,7 +1,7 @@
 import {Container} from 'unstated';
 import kap from '../utils/kap';
 
-const barWidth = 464;
+const barWidth = 496;
 const barHeight = 64;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);

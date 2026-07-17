@@ -5,7 +5,7 @@ import PlayBar from './controls/play-bar';
 
 const VideoPlayer = () => {
   return (
-    <div className="container">
+    <div className="container video-player-container">
       <Video/>
       <div className="video-controls">
         <div className="controls left"><LeftControls/></div>

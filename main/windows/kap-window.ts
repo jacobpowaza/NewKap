@@ -4,6 +4,7 @@ import pEvent from 'p-event';
 import path from 'path';
 import {customApplicationMenu, defaultApplicationMenu, MenuModifier} from '../menus/application';
 import {loadRoute} from '../utils/routes';
+import {setDockVisible} from '../utils/dock';
 
 interface KapWindowOptions<State> extends Electron.BrowserWindowConstructorOptions {
   route: string;
@@ -81,6 +82,18 @@ export default class KapWindow<State = any> {
     return this.windows.get(id);
   }
 
+  private static hideDockIfUnused() {
+    const hasVisibleDockWindow = [...KapWindow.windows.values()].some(window =>
+      window.options.dock &&
+      !window.browserWindow.isDestroyed() &&
+      window.browserWindow.isVisible()
+    );
+
+    if (!hasVisibleDockWindow) {
+      setDockVisible(false);
+    }
+  }
+
   get webContents() {
     return this.browserWindow.webContents;
   }
@@ -125,8 +138,18 @@ export default class KapWindow<State = any> {
 
     KapWindow.windows.set(this.id, this);
 
+    this.browserWindow.on('show', () => {
+      if (this.options.dock) {
+        setDockVisible(true);
+      }
+    });
+    this.browserWindow.on('hide', KapWindow.hideDockIfUnused);
+
     this.browserWindow.on('close', this.cleanup);
-    this.browserWindow.on('closed', this.cleanup);
+    this.browserWindow.on('closed', () => {
+      this.cleanup();
+      KapWindow.hideDockIfUnused();
+    });
 
     this.browserWindow.on('focus', () => {
       this.generateMenu();
@@ -146,18 +169,27 @@ export default class KapWindow<State = any> {
     if (waitForMount) {
       return new Promise<void>(resolve => {
         this.answerRenderer('kap-window-mount', () => {
-          if (!this.browserWindow.isVisible()) {
-            this.browserWindow.show();
-          }
-
+          this.reveal();
           resolve();
         });
       });
     }
 
     await pEvent(this.webContents, 'did-finish-load');
-    this.browserWindow.show();
+    this.reveal();
   }
+
+  private readonly reveal = () => {
+    if (this.options.dock) {
+      setDockVisible(true);
+    }
+
+    if (!this.browserWindow.isVisible()) {
+      this.browserWindow.show();
+    }
+
+    this.browserWindow.focus();
+  };
 
   // Use this around any call that causes:
   // TypeError: Object has been destroyed

@@ -25,7 +25,9 @@ const togglePauseCurrentRecording = () => {
 const handlers = new Map<string, () => void>([
   ['triggerCropper', startOrOpenRecording],
   ['stopRecording', stopCurrentRecording],
-  ['pauseRecording', togglePauseCurrentRecording]
+  ['pauseRecording', togglePauseCurrentRecording],
+  ['captureScreenshot', () => windowManager.cropper?.open()],
+  ['captureScreenshotClipboard', () => windowManager.cropper?.open()]
 ]);
 
 const registerShortcut = (shortcut: string, action: () => void) => {

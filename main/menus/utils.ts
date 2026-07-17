@@ -18,9 +18,11 @@ export enum MenuItemId {
   audioDevices = 'audioDevices',
   startRecording = 'startRecording',
   stopRecording = 'stopRecording',
+  captureScreenshot = 'captureScreenshot',
   pauseRecording = 'pauseRecording',
   resumeRecording = 'resumeRecording',
-  duration = 'duration'
+  duration = 'duration',
+  checkForUpdates = 'checkForUpdates'
 }
 
 export const getCurrentMenuItem = (id: MenuItemId) => {

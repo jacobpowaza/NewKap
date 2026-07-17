@@ -8,6 +8,7 @@ const unavailable = {
     setLoginItemSettings: asyncNoop
   },
   cropper: {
+    captureScreenshot: asyncNoop,
     controlsReady: noop,
     startRecording: asyncNoop
   },
@@ -15,6 +16,10 @@ const unavailable = {
     showMessageBox: asyncNoop,
     showMessageBoxSync: () => 1,
     showOpenDialogSync: () => undefined
+  },
+  flags: {
+    get: () => false,
+    set: asyncNoop
   },
   ipc: {
     answerMain: () => noop,
@@ -68,6 +73,9 @@ const unavailable = {
     shouldUseDarkColors: () => false
   },
   track: asyncNoop,
+  updater: {
+    check: asyncNoop
+  },
   window: {
     close: asyncNoop,
     getCapabilities: async () => ({closable: true, maximizable: true, minimizable: true}),

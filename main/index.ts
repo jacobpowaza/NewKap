@@ -1,4 +1,4 @@
-import {app, BrowserWindow, Tray, Menu, dialog, nativeImage} from 'electron';
+import {app, BrowserWindow, Tray, Menu, dialog} from 'electron';
 import path from 'path';
 import fs from 'fs';
 import {mark} from './utils/perf';
@@ -110,7 +110,6 @@ app.on('window-all-closed', () => {
   mark('app.whenReady resolved');
 
   if (process.platform === 'darwin') {
-    app.dock?.setIcon(nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.icns')));
     app.setActivationPolicy('accessory');
   }
 
@@ -274,20 +273,10 @@ app.on('window-all-closed', () => {
         return;
       }
 
-      const log = require('electron-log');
-      const {autoUpdater} = require('electron-updater');
+      const {checkForUpdates} = require('./updater');
       const toMilliseconds = require('@sindresorhus/to-milliseconds');
 
-      autoUpdater.logger = log;
-      autoUpdater.logger.transports.file.level = 'info';
-
-      const doCheck = async () => {
-        try {
-          await autoUpdater.checkForUpdates();
-        } catch (error) {
-          autoUpdater.logger?.error(error);
-        }
-      };
+      const doCheck = () => checkForUpdates({silent: true});
 
       setInterval(doCheck, toMilliseconds({hours: 1}));
       doCheck();

@@ -26,11 +26,20 @@ if (content.includes('within 5 seconds')) {
   patched = true;
 }
 
+// Aperture's native helper emits `onStart` when recording has actually started.
+// The upstream wrapper waits one extra second before resolving, which leaves Kap
+// visibly idle after the countdown finishes.
+const startDelayPattern = /setTimeout\(resolve,\s*1000\);/;
+if (startDelayPattern.test(content)) {
+  content = content.replace(startDelayPattern, 'resolve();');
+  patched = true;
+}
+
 if (patched) {
   fs.writeFileSync(aperturePath, content);
-  console.log('✅ Patched aperture: recording timeout increased to 30s');
+  console.log('✅ Patched aperture: recording timeout/start delay updated');
 } else {
-  console.log('✅ Aperture already patched or timeout not found');
+  console.log('✅ Aperture already patched or timeout/start delay not found');
 }
 
 // Patch ALL copies of electron-util: disable enforceMacOSAppLocation everywhere

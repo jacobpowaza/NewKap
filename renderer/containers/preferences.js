@@ -36,7 +36,9 @@ export default class PreferencesContainer extends Container {
       shortcutMap: {
         triggerCropper: 'Start Recording',
         stopRecording: 'Stop Recording',
-        pauseRecording: 'Pause Recording'
+        pauseRecording: 'Pause Recording',
+        captureScreenshot: 'Capture Screenshot',
+        captureScreenshotClipboard: 'Capture Screenshot to Clipboard'
       }
     });
 

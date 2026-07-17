@@ -74,19 +74,19 @@ const useOptions = () => {
     }
 
     const formatOption = formats.find(f => f.format === formatName);
-    const selectedSharePlugin = formatOption.plugins.find(plugin => {
+    const selectedSharePlugin = formatOption?.plugins.find(plugin => {
       return (
-        plugin.pluginName === sharePlugin.pluginName &&
-        plugin.title === sharePlugin.serviceTitle &&
-        (plugin.apps?.some(app => app.url === sharePlugin.app?.url) ?? true)
+        plugin.pluginName === sharePlugin?.pluginName &&
+        plugin.title === sharePlugin?.serviceTitle &&
+        (plugin.apps?.some(app => app.url === sharePlugin?.app?.url) ?? true)
       );
-    }) ?? formatOption.plugins.find(plugin => plugin.pluginName !== '_openWith');
+    }) ?? formatOption?.plugins.find(plugin => plugin.pluginName !== '_openWith');
 
     setFormat(formatName);
-    setSharePlugin({
+    setSharePlugin(selectedSharePlugin && {
       pluginName: selectedSharePlugin.pluginName,
       serviceTitle: selectedSharePlugin.title,
-      app: selectedSharePlugin.apps ? sharePlugin.app : undefined
+      app: selectedSharePlugin.apps ? sharePlugin?.app : undefined
     });
     updateFps(Math.min(originalFps, fpsHistory[formatName]), formatName);
   };

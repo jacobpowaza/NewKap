@@ -51,13 +51,22 @@ export const getExportHistoryMenuItem = () => ({
   id: MenuItemId.exportHistory
 });
 
+export const getCheckForUpdatesMenuItem = () => ({
+  id: MenuItemId.checkForUpdates,
+  label: 'Check for Updates…',
+  click: () => {
+    const {checkForUpdates} = require('../updater');
+    checkForUpdates({silent: false});
+  }
+});
+
 export const getSendFeedbackMenuItem = () => ({
   id: MenuItemId.sendFeedback,
   label: 'Send Feedback…',
   click() {
     openNewGitHubIssue({
-      user: 'wulkano',
-      repo: 'kap',
+      user: 'jacobpowaza',
+      repo: 'NewKap',
       body: issueBody
     });
   }

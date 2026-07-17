@@ -11,6 +11,10 @@ import {showError} from './utils/errors';
 import {activateApp, MacWindow} from './utils/windows';
 import {getCogMenuAsync} from './menus/cog';
 import {startRecording} from './aperture';
+import {flags} from './common/flags';
+import {captureScreenshot} from './screenshot';
+import {windowManager} from './windows/manager';
+import {translateBoundsToDisplay} from './common/display-bounds';
 
 const CONVERSION_WIDTH = 370;
 const CONVERSION_HEIGHT = 392;
@@ -155,6 +159,11 @@ export const setupRendererApi = () => {
   ipcMain.handle('kap:app:get-login-item-settings', () => app.getLoginItemSettings());
   ipcMain.handle('kap:app:set-login-item-settings', (_event, options: {openAtLogin: boolean}) => app.setLoginItemSettings(options));
   ipcMain.handle('kap:cropper:start-recording', (_event, options: any) => startRecording(options));
+  ipcMain.handle('kap:cropper:capture-screenshot', (event, bounds: {x: number; y: number; width: number; height: number}) => {
+    const globalBounds = translateBoundsToDisplay(bounds, getSenderWindow(event).getBounds());
+    windowManager.cropper?.close();
+    setTimeout(() => captureScreenshot(globalBounds), 150);
+  });
 
   ipcMain.handle('kap:dialog:show-message-box', (event, options: Electron.MessageBoxOptions) => dialog.showMessageBox(getSenderWindow(event), options));
   ipcMain.on('kap:dialog:show-message-box-sync', (event, options: Electron.MessageBoxSyncOptions) => {
@@ -163,6 +172,11 @@ export const setupRendererApi = () => {
   ipcMain.on('kap:dialog:show-open-dialog-sync', (event, options: Electron.OpenDialogSyncOptions) => {
     event.returnValue = dialog.showOpenDialogSync(getSenderWindow(event), options);
   });
+
+  ipcMain.on('kap:flags:get-sync', (event, key: string) => {
+    event.returnValue = flags.get(key as any);
+  });
+  ipcMain.handle('kap:flags:set', (_event, {key, value}: {key: string; value: boolean}) => flags.set(key as any, value));
 
   ipcMain.handle('kap:menu:popup', (event, {template, position}: {template: any[]; position?: {x?: number; y?: number}}) => {
     Menu.buildFromTemplate(sanitizeMenuTemplate(template)).popup({
@@ -248,6 +262,11 @@ export const setupRendererApi = () => {
   ipcMain.handle('kap:settings:unsubscribe', (_event, subscriptionId: string) => {
     settingsSubscriptions.get(subscriptionId)?.();
     settingsSubscriptions.delete(subscriptionId);
+  });
+
+  ipcMain.handle('kap:updater:check', () => {
+    const {checkForUpdates} = require('./updater');
+    return checkForUpdates({silent: false});
   });
 
   ipcMain.handle('kap:shell:open-external', (_event, url: string) => shell.openExternal(url));

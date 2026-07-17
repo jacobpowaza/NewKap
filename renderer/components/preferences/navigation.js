@@ -3,7 +3,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import {connect, PreferencesContainer} from '../../containers';
-import {SettingsIcon, PluginsIcon} from '../../vectors';
+import {SettingsIcon, PluginsIcon, TuneIcon} from '../../vectors';
 
 import {handleKeyboardActivation} from '../../utils/inputs';
 
@@ -11,6 +11,9 @@ const CATEGORIES = [
   {
     name: 'general',
     icon: SettingsIcon
+  }, {
+    name: 'keybinds',
+    icon: TuneIcon
   }, {
     name: 'plugins',
     icon: PluginsIcon
@@ -58,7 +61,7 @@ class PreferencesNavigation extends React.Component {
           .nav-item {
             display: flex;
             align-items: center;
-            margin-right: 24px;
+            margin-right: 16px;
             height: 24px;
             color: var(--subtitle-color);
             border-radius: 4px;

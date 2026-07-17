@@ -21,21 +21,18 @@ const useVideoTime = () => {
       }
     },
     onEnded: () => {
-      updateTime(startTime);
+      setCurrentTime(endTime);
     }
   };
 
   const updateTime = (time: number, ignoreElement = false) => {
-    if (time >= endTime && !videoRef.current.paused) {
-      videoRef.current.currentTime = startTime;
-      setCurrentTime(startTime);
-    } else {
-      if (!ignoreElement) {
-        videoRef.current.currentTime = time;
-      }
+    const boundedTime = Math.max(startTime, Math.min(endTime || time, time));
 
-      setCurrentTime(time);
+    if (!ignoreElement && videoRef.current) {
+      videoRef.current.currentTime = boundedTime;
     }
+
+    setCurrentTime(boundedTime);
   };
 
   const updateStartTime = (time: number) => {
@@ -55,16 +52,50 @@ const useVideoTime = () => {
   };
 
   useEffect(() => {
-    if (!videoRef.current) {
+    const video = videoRef.current;
+    if (!video) {
       return;
     }
 
-    const interval = setInterval(() => {
-      updateTime(videoRef.current.currentTime ?? 0, true);
-    }, 1000 / 30);
+    let animationFrame = 0;
+
+    const syncTime = () => {
+      updateTime(video.currentTime ?? 0, true);
+    };
+
+    const stopSyncing = () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
+      }
+    };
+
+    const syncWhilePlaying = () => {
+      syncTime();
+
+      if (!video.paused && !video.ended) {
+        animationFrame = requestAnimationFrame(syncWhilePlaying);
+      }
+    };
+
+    const startSyncing = () => {
+      stopSyncing();
+      syncWhilePlaying();
+    };
+
+    video.addEventListener('play', startSyncing);
+    video.addEventListener('pause', syncTime);
+    video.addEventListener('ended', syncTime);
+    video.addEventListener('seeked', syncTime);
+    video.addEventListener('timeupdate', syncTime);
 
     return () => {
-      clearInterval(interval);
+      stopSyncing();
+      video.removeEventListener('play', startSyncing);
+      video.removeEventListener('pause', syncTime);
+      video.removeEventListener('ended', syncTime);
+      video.removeEventListener('seeked', syncTime);
+      video.removeEventListener('timeupdate', syncTime);
     };
   }, [startTime, endTime]);
 

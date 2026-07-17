@@ -1,7 +1,6 @@
 import TrafficLights from 'components/traffic-lights';
 import {BackPlainIcon, MoreIcon} from 'vectors';
 import {UseConversionState} from 'hooks/editor/use-conversion';
-import {flags} from '../../../common/flags';
 import kap from '../../../utils/kap';
 import {ExportStatus} from '../../../common/types';
 import {useMemo} from 'react';
@@ -9,14 +8,14 @@ import IconMenu from '../../icon-menu';
 
 const TitleBar = ({conversion, cancel, copy, retry, showInFolder}: {conversion: UseConversionState; cancel: () => any; copy: () => any; retry: () => any; showInFolder: () => void}) => {
   const shouldClose = async () => {
-    if (conversion.status === ExportStatus.inProgress && !flags.get('backgroundEditorConversion')) {
+    if (conversion.status === ExportStatus.inProgress && !kap.flags.get('backgroundEditorConversion')) {
       await kap.dialog.showMessageBox({
         type: 'info',
         message: 'Your export will continue in the background. You can access it through the Export History window.',
         buttons: ['Ok'],
         defaultId: 0
       });
-      flags.set('backgroundEditorConversion', true);
+      kap.flags.set('backgroundEditorConversion', true);
     }
 
     return true;

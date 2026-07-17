@@ -1,7 +1,7 @@
 import {app, Menu} from 'electron';
 import path from 'path';
 import {MenuItemId, MenuOptions} from './utils';
-import {getAboutMenuItem, getExportHistoryMenuItem, getOpenFileMenuItem, getPreferencesMenuItem, getSendFeedbackMenuItem} from './common';
+import {getAboutMenuItem, getCheckForUpdatesMenuItem, getExportHistoryMenuItem, getOpenFileMenuItem, getPreferencesMenuItem, getSendFeedbackMenuItem} from './common';
 import {getAudioDevices, getDefaultInputDevice} from '../utils/devices';
 import {settings} from '../common/settings';
 import {defaultInputDeviceId} from '../common/constants';
@@ -26,6 +26,18 @@ const getStartRecordingItem = (): MenuOptions[number] => ({
   accelerator: menuAccelerator(settings.get('shortcuts.triggerCropper')),
   click: startOrOpenRecording
 });
+
+const getScreenshotItem = (): MenuOptions[number] => {
+  const shortcut = settings.get<string, string>('shortcuts.captureScreenshot');
+
+  return {
+    id: MenuItemId.captureScreenshot,
+    label: 'Take Screenshot',
+    accelerator: menuAccelerator(shortcut),
+    toolTip: shortcut ? `Take a screenshot (${shortcut})` : 'Take a screenshot. Configure its keybind in Preferences → Keybinds.',
+    click: () => windowManager.cropper?.open()
+  };
+};
 
 const setCountdownDuration = (duration: number) => {
   settings.set('countdownDuration', duration);
@@ -105,6 +117,7 @@ const getBasicAudioItem = (): MenuOptions[number] => ({
 
 const getQuickSettings = (): MenuOptions => [
   getStartRecordingItem(),
+  getScreenshotItem(),
   {type: 'separator'},
   getCountdownItem(),
   getCursorItem(),
@@ -120,6 +133,7 @@ export const buildBasicCogMenu = (): MenuOptions => [
   getExportHistoryMenuItem(),
   {type: 'separator'},
   getAboutMenuItem(),
+  getCheckForUpdatesMenuItem(),
   getSendFeedbackMenuItem(),
   {type: 'separator'},
   {label: 'Quit Kap', accelerator: 'Command+Q', click: () => app.quit()}
@@ -191,6 +205,7 @@ const getPluginsItem = (): MenuOptions[number] => {
 
 const getCogMenuTemplate = async (): Promise<MenuOptions> => [
   getStartRecordingItem(),
+  getScreenshotItem(),
   {type: 'separator'},
   getCountdownItem(),
   getCursorItem(),
@@ -203,6 +218,7 @@ const getCogMenuTemplate = async (): Promise<MenuOptions> => [
   getExportHistoryMenuItem(),
   {type: 'separator'},
   getAboutMenuItem(),
+  getCheckForUpdatesMenuItem(),
   getSendFeedbackMenuItem(),
   {type: 'separator'},
   {label: 'Quit Kap', accelerator: 'Command+Q', click: () => app.quit()}

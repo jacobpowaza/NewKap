@@ -9,7 +9,6 @@ import Item from '../item';
 import Switch from '../item/switch';
 import Button from '../item/button';
 import Select from '../item/select';
-import ShortcutInput from '../shortcut-input';
 import KeyboardNumberInput from '../../keyboard-number-input';
 
 import Category from './category';
@@ -21,7 +20,9 @@ class General extends React.Component {
     category: 'general'
   };
 
-  state = {};
+  state = {
+    checkingForUpdate: false
+  };
 
   componentDidMount() {
     this.setState({
@@ -33,6 +34,16 @@ class General extends React.Component {
     kap.shell.openPath(this.props.kapturesDir);
   };
 
+  checkForUpdates = async () => {
+    this.setState({checkingForUpdate: true});
+
+    try {
+      await kap.updater.check();
+    } finally {
+      this.setState({checkingForUpdate: false});
+    }
+  };
+
   render() {
     const {
       kapturesDir,
@@ -41,7 +52,6 @@ class General extends React.Component {
       showCursor,
       highlightClicks,
       record60fps,
-      enableShortcuts,
       loopExports,
       countdownDuration,
       toggleSetting,
@@ -53,19 +63,16 @@ class General extends React.Component {
       recordAudio,
       pickKapturesDir,
       setOpenOnStartup,
-      updateShortcut,
-      toggleShortcuts,
       category,
       lossyCompression,
       recordingQuality,
       defaultExportFormat,
       showNotifications,
-      playNotificationSound,
-      shortcuts,
-      shortcutMap
+      playNotificationSound
     } = this.props;
 
-    const {showCursorSupported} = this.state;
+    const {showCursorSupported, checkingForUpdate} = this.state;
+    const {version} = kap.app.getInfo();
 
     const devices = audioDevices.map(device => ({
       label: device.name,
@@ -91,6 +98,7 @@ class General extends React.Component {
 
     return (
       <Category>
+        <div className="section-heading"><h2>Capture</h2><span>Recording appearance, timing, audio, and quality</span></div>
         {
           showCursorSupported &&
           <Item
@@ -123,26 +131,6 @@ class General extends React.Component {
               onClick={() => toggleSetting('highlightClicks')}
             />
           </Item>
-        }
-        <Item
-          key="enableShortcuts"
-          parentItem
-          title="Keyboard shortcuts"
-          subtitle="Toggle and customise keyboard shortcuts"
-          help="You can paste any valid Electron accelerator string like Command+Shift+5"
-        >
-          <Switch tabIndex={tabIndex} checked={enableShortcuts} onClick={toggleShortcuts}/>
-        </Item>
-        {
-          enableShortcuts && Object.entries(shortcutMap).map(([key, title]) => (
-            <Item key={key} subtitle={title}>
-              <ShortcutInput
-                shortcut={shortcuts[key]}
-                tabIndex={tabIndex}
-                onChange={shortcut => updateShortcut(key, shortcut)}
-              />
-            </Item>
-          ))
         }
         <Item
           key="loopExports"
@@ -224,6 +212,7 @@ class General extends React.Component {
             selected={defaultExportFormat}
             onSelect={value => toggleSetting('defaultExportFormat', value)}/>
         </Item>
+        <div className="section-heading"><h2>App</h2><span>Startup, notifications, privacy, and file storage</span></div>
         <Item
           key="allowAnalytics"
           title="Allow analytics"
@@ -265,6 +254,17 @@ class General extends React.Component {
           <Button tabIndex={tabIndex} title="Choose" onClick={pickKapturesDir}/>
         </Item>
         <Item
+          key="checkForUpdates"
+          title="Software update"
+          subtitle={`Kap ${version}`}
+        >
+          <Button
+            tabIndex={tabIndex}
+            title={checkingForUpdate ? 'Checking…' : 'Check for Updates'}
+            onClick={this.checkForUpdates}
+          />
+        </Item>
+        <Item
           key="lossyCompression"
           parentItem
           title="Lossy GIF compression"
@@ -277,6 +277,22 @@ class General extends React.Component {
           />
         </Item>
         <style jsx>{`
+          .section-heading {
+            padding: 24px 16px 4px;
+          }
+
+          .section-heading h2 {
+            color: var(--title-color);
+            font-size: 16px;
+            line-height: 20px;
+            margin: 0;
+          }
+
+          .section-heading span {
+            color: var(--subtitle-color);
+            font-size: 12px;
+          }
+
           .countdown-input {
             display: flex;
             align-items: center;
@@ -316,7 +332,6 @@ General.propTypes = {
   showCursor: PropTypes.bool,
   highlightClicks: PropTypes.bool,
   record60fps: PropTypes.bool,
-  enableShortcuts: PropTypes.bool,
   toggleSetting: PropTypes.elementType.isRequired,
   toggleRecordAudio: PropTypes.elementType.isRequired,
   audioInputDeviceId: PropTypes.string,
@@ -331,11 +346,7 @@ General.propTypes = {
   setCountdownDuration: PropTypes.elementType.isRequired,
   pickKapturesDir: PropTypes.elementType.isRequired,
   setOpenOnStartup: PropTypes.elementType.isRequired,
-  updateShortcut: PropTypes.elementType.isRequired,
-  toggleShortcuts: PropTypes.elementType.isRequired,
   category: PropTypes.string,
-  shortcutMap: PropTypes.object,
-  shortcuts: PropTypes.object,
   lossyCompression: PropTypes.bool,
   recordingQuality: PropTypes.string,
   defaultExportFormat: PropTypes.string,
@@ -350,7 +361,6 @@ export default connect(
     highlightClicks,
     record60fps,
     recordAudio,
-    enableShortcuts,
     audioInputDeviceId,
     audioDevices,
     kapturesDir,
@@ -364,15 +374,12 @@ export default connect(
     recordingQuality,
     defaultExportFormat,
     showNotifications,
-    playNotificationSound,
-    shortcuts,
-    shortcutMap
+    playNotificationSound
   }) => ({
     showCursor,
     highlightClicks,
     record60fps,
     recordAudio,
-    enableShortcuts,
     audioInputDeviceId,
     audioDevices,
     kapturesDir,
@@ -386,9 +393,7 @@ export default connect(
     recordingQuality,
     defaultExportFormat,
     showNotifications,
-    playNotificationSound,
-    shortcuts,
-    shortcutMap
+    playNotificationSound
   }),
   ({
     toggleSetting,
@@ -396,8 +401,6 @@ export default connect(
     setAudioInputDeviceId,
     pickKapturesDir,
     setOpenOnStartup,
-    updateShortcut,
-    toggleShortcuts,
     setCountdownDuration
   }) => ({
     toggleSetting,
@@ -405,8 +408,6 @@ export default connect(
     setAudioInputDeviceId,
     pickKapturesDir,
     setOpenOnStartup,
-    updateShortcut,
-    toggleShortcuts,
     setCountdownDuration
   })
 )(General);

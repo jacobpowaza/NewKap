@@ -5,6 +5,7 @@ import VideoControlsContainer from './video-controls-container';
 import useEditorWindowState from 'hooks/editor/use-editor-window-state';
 import {ipcRenderer as ipc} from '../../utils/ipc';
 import {popupMenu} from '../../utils/menu-actions';
+import TimelineContainer from './timeline-container';
 
 const getVideoProps = (propsArray: Array<React.DetailedHTMLProps<React.VideoHTMLAttributes<HTMLVideoElement>, HTMLVideoElement>>) => {
   const handlers = new Map();
@@ -38,12 +39,20 @@ const Video = () => {
   const videoTimeContainer = VideoTimeContainer.useContainer();
   const videoMetadataContainer = VideoMetadataContainer.useContainer();
   const videoControlsContainer = VideoControlsContainer.useContainer();
+  const {activeClip} = TimelineContainer.useContainer();
+  const videoFilter = `brightness(${1 + (activeClip?.brightness ?? 0)}) contrast(${activeClip?.contrast ?? 1}) saturate(${activeClip?.saturation ?? 1})`;
 
   useEffect(() => {
     videoTimeContainer.setVideoRef(videoRef.current);
     videoMetadataContainer.setVideoRef(videoRef.current);
     videoControlsContainer.setVideoRef(videoRef.current);
   }, []);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = activeClip?.freezeDuration === undefined ? (activeClip?.speed ?? 1) : 1;
+    }
+  }, [activeClip?.freezeDuration, activeClip?.speed]);
 
   const videoProps = getVideoProps([
     videoTimeContainer.videoProps,
@@ -78,7 +87,7 @@ const Video = () => {
 
   return (
     <div className="video-frame" onContextMenu={onContextMenu}>
-      <video ref={videoRef} preload="auto" src={src} {...videoProps}/>
+      <video ref={videoRef} preload="auto" src={src} style={{filter: videoFilter}} {...videoProps}/>
       <style jsx>{`
         .video-frame {
           flex: 1;
@@ -94,7 +103,7 @@ const Video = () => {
         video {
           width: 100%;
           height: 100%;
-          max-height: calc(100vh - 48px);
+          max-height: calc(100vh - 180px);
           object-fit: contain;
           object-position: center center;
           display: block;

@@ -5,12 +5,16 @@ import {ipcRenderer as ipc} from '../../../utils/ipc';
 import {connect, PreferencesContainer} from '../../../containers';
 
 import General from './general';
+import Keybinds from './keybinds';
 import Plugins from './plugins';
 
 const CATEGORIES = [
   {
     name: 'general',
     Component: General
+  }, {
+    name: 'keybinds',
+    Component: Keybinds
   }, {
     name: 'plugins',
     Component: Plugins

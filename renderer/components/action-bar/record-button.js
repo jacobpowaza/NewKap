@@ -4,6 +4,7 @@ import classNames from 'classnames';
 
 import {connect, CropperContainer} from '../../containers';
 import {handleKeyboardActivation} from '../../utils/inputs';
+import kap from '../../utils/kap';
 
 const getMediaNode = async deviceId => new Promise((resolve, reject) => {
   navigator.getUserMedia({
@@ -29,11 +30,16 @@ const RecordButton = ({
   cropperExists,
   recordAudio,
   audioInputDeviceId,
-  startCountdown
+  startCountdown,
+  cropperX,
+  cropperY,
+  cropperWidth,
+  cropperHeight
 }) => {
   const [showFirstRipple, setShowFirstRipple] = useState(false);
   const [showSecondRipple, setShowSecondRipple] = useState(false);
   const [shouldStop, setShouldStop] = useState(false);
+  const [mode, setMode] = useState('record');
 
   useEffect(() => {
     let node;
@@ -89,41 +95,62 @@ const RecordButton = ({
     }
   };
 
-  const handleStartRecording = event => {
+  const handlePrimaryAction = event => {
     event.stopPropagation();
 
-    if (cropperExists) {
+    if (!cropperExists) {
+      return;
+    }
+
+    if (mode === 'screenshot') {
+      kap.cropper.captureScreenshot({x: cropperX, y: cropperY, width: cropperWidth, height: cropperHeight});
+    } else {
       startCountdown();
     }
   };
+
+  const toggleMode = event => {
+    event.stopPropagation();
+    setMode(currentMode => currentMode === 'record' ? 'screenshot' : 'record');
+  };
+
+  const CameraIcon = () => (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8.2 6 9.6 4h4.8l1.4 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.2Zm3.8 10.2a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Zm0-1.8a2.4 2.4 0 1 1 0-4.8 2.4 2.4 0 0 1 0 4.8Z"/>
+    </svg>
+  );
 
   return (
     <div
       className={classNames('container', {'cropper-exists': cropperExists})}
       tabIndex={cropperExists ? 0 : -1}
-      onKeyDown={handleKeyboardActivation(handleStartRecording)}
+      onKeyDown={handleKeyboardActivation(handlePrimaryAction)}
     >
-      <div className="outer" onMouseDown={handleStartRecording}>
+      <div className={classNames('outer', {camera: mode === 'screenshot'})} title={mode === 'screenshot' ? 'Take screenshot' : 'Start recording'} onMouseDown={handlePrimaryAction}>
         <div className="inner">
-          {!cropperExists && <div className="fill"/>}
+          {mode === 'screenshot' ? <CameraIcon/> : (!cropperExists && <div className="fill"/>)}
         </div>
         {showFirstRipple && <div className="ripple first" onAnimationIteration={shouldFirstStop}/>}
         {showSecondRipple && <div className="ripple second" onAnimationIteration={shouldSecondStop}/>}
       </div>
+      <button type="button" className={classNames('mode-toggle', {record: mode === 'screenshot'})} title={mode === 'record' ? 'Switch to screenshot' : 'Switch to recording'} onMouseDown={toggleMode}>
+        {mode === 'record' ? <CameraIcon/> : <span/>}
+      </button>
       <style jsx>{`
             .container {
-              width: 64px;
+              width: 112px;
               height: 64px;
               display: flex;
               align-items: center;
               justify-content: center;
               outline: none;
+              gap: 6px;
             }
 
             .outer {
-              width: 48px;
-              height: 48px;
-              padding: 8px;
+              width: 44px;
+              height: 44px;
+              padding: 6px;
               border-radius: 50%;
               background: var(--record-button-background);
               border: 2px solid var(--record-button-border-color);
@@ -131,6 +158,7 @@ const RecordButton = ({
               align-items: center;
               justify-content: center;
               box-sizing: border-box;
+              flex-shrink: 0;
               position: relative;
             }
 
@@ -141,6 +169,53 @@ const RecordButton = ({
               background: var(--record-button-inner-background${cropperExists ? '-cropper' : ''});
               ${cropperExists ? '' : 'border: var(--record-button-inner-border-width) solid var(--record-button-inner-border);'}
               box-sizing: border-box;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+
+            .camera {
+              background: #4a4a4a;
+              border-color: #666;
+            }
+
+            .camera .inner {
+              background: transparent;
+            }
+
+            .inner :global(svg) {
+              fill: #fff;
+              height: 24px;
+              width: 24px;
+            }
+
+            .mode-toggle {
+              position: relative;
+              right: auto;
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              border: 1px solid rgba(127, 127, 127, 0.35);
+              background: var(--action-bar-background);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 5px;
+              outline: none;
+              flex-shrink: 0;
+            }
+
+            .mode-toggle :global(svg) {
+              width: 16px;
+              height: 16px;
+              fill: var(--icon-color, #666);
+            }
+
+            .mode-toggle span {
+              width: 12px;
+              height: 12px;
+              border-radius: 50%;
+              background: #ff4d45;
             }
 
             .fill {
@@ -202,11 +277,15 @@ RecordButton.propTypes = {
   cropperExists: PropTypes.bool,
   recordAudio: PropTypes.bool,
   audioInputDeviceId: PropTypes.string,
-  startCountdown: PropTypes.func
+  startCountdown: PropTypes.func,
+  cropperX: PropTypes.number,
+  cropperY: PropTypes.number,
+  cropperWidth: PropTypes.number,
+  cropperHeight: PropTypes.number
 };
 
 export default connect(
   [CropperContainer],
-  ({recordAudio, audioInputDeviceId}) => ({recordAudio, audioInputDeviceId}),
+  ({recordAudio, audioInputDeviceId, x, y, width, height}) => ({recordAudio, audioInputDeviceId, cropperX: x, cropperY: y, cropperWidth: width, cropperHeight: height}),
   ({startCountdown}) => ({startCountdown})
 )(RecordButton);

@@ -1,11 +1,52 @@
 /* eslint-disable @typescript-eslint/promise-function-async */
 import {contextBridge, ipcRenderer} from 'electron';
-import {serializeError} from 'serialize-error';
-
-const {getRendererSendChannel} = require('electron-better-ipc/source/util');
-const betterIpc = require('electron-better-ipc');
 
 const windowId = ipcRenderer.sendSync('kap:get-window-id') as number;
+const getUniqueId = () => `${Date.now()}-${Math.random()}`;
+const getSendChannel = (channel: string) => `%better-ipc-send-channel-${channel}`;
+const getRendererSendChannel = (id: number, channel: string) => `%better-ipc-send-channel-${id}-${channel}`;
+
+const serializeError = (value: any, seen = new WeakSet()): any => {
+  if (!value || typeof value !== 'object') {
+    return typeof value === 'function' ? `[Function: ${value.name || 'anonymous'}]` : value;
+  }
+
+  if (seen.has(value)) {
+    return '[Circular]';
+  }
+
+  seen.add(value);
+  const serialized: Record<string, any> | any[] = Array.isArray(value) ? [] : {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (typeof nestedValue !== 'function') {
+      (serialized as any)[key] = serializeError(nestedValue, seen);
+    }
+  }
+
+  for (const property of ['name', 'message', 'stack', 'code']) {
+    if (typeof value[property] === 'string') {
+      (serialized as any)[property] = value[property];
+    }
+  }
+
+  seen.delete(value);
+  return serialized;
+};
+
+const deserializeError = (value: any) => {
+  if (value instanceof Error) {
+    return value;
+  }
+
+  const error = new Error(typeof value?.message === 'string' ? value.message : String(value));
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    Object.assign(error, value);
+  } else {
+    error.name = 'NonError';
+  }
+
+  return error;
+};
 
 const answerMain = <Data, Result>(channel: string, callback: (data: Data) => Result | Promise<Result>) => {
   const sendChannel = getRendererSendChannel(windowId, channel);
@@ -41,6 +82,32 @@ const on = (channel: string, callback: (...args: any[]) => void) => {
 
 const invoke = (channel: string, data?: any) => ipcRenderer.invoke(channel, data);
 
+const callMain = <Data, Result>(channel: string, userData?: Data) => new Promise<Result>((resolve, reject) => {
+  const id = getUniqueId();
+  const sendChannel = getSendChannel(channel);
+  const dataChannel = `%better-ipc-response-data-channel-${channel}-${id}`;
+  const errorChannel = `%better-ipc-response-error-channel-${channel}-${id}`;
+
+  const cleanup = () => {
+    ipcRenderer.off(dataChannel, handleData);
+    ipcRenderer.off(errorChannel, handleError);
+  };
+
+  const handleData = (_event: Electron.IpcRendererEvent, result: Result) => {
+    cleanup();
+    resolve(result);
+  };
+
+  const handleError = (_event: Electron.IpcRendererEvent, error: any) => {
+    cleanup();
+    reject(deserializeError(error));
+  };
+
+  ipcRenderer.once(dataChannel, handleData);
+  ipcRenderer.once(errorChannel, handleError);
+  ipcRenderer.send(sendChannel, {dataChannel, errorChannel, userData});
+});
+
 contextBridge.exposeInMainWorld('kap', {
   app: {
     getInfo: () => ipcRenderer.sendSync('kap:app:get-info-sync'),
@@ -48,6 +115,7 @@ contextBridge.exposeInMainWorld('kap', {
     setLoginItemSettings: (options: {openAtLogin: boolean}) => invoke('kap:app:set-login-item-settings', options)
   },
   cropper: {
+    captureScreenshot: (bounds: {x: number; y: number; width: number; height: number}) => invoke('kap:cropper:capture-screenshot', bounds),
     controlsReady: (payload: {sessionId?: number}) => ipcRenderer.send('cropper-controls-ready', payload),
     rendererReady: (payload?: {sessionId?: number}) => ipcRenderer.send('cropper-renderer-ready', payload),
     startRecording: (options: any) => invoke('kap:cropper:start-recording', options)
@@ -57,9 +125,13 @@ contextBridge.exposeInMainWorld('kap', {
     showMessageBoxSync: (options: Electron.MessageBoxSyncOptions) => ipcRenderer.sendSync('kap:dialog:show-message-box-sync', options),
     showOpenDialogSync: (options: Electron.OpenDialogSyncOptions) => ipcRenderer.sendSync('kap:dialog:show-open-dialog-sync', options)
   },
+  flags: {
+    get: (key: string) => ipcRenderer.sendSync('kap:flags:get-sync', key),
+    set: (key: string, value: boolean) => invoke('kap:flags:set', {key, value})
+  },
   ipc: {
     answerMain,
-    callMain: (channel: string, data?: any) => betterIpc.ipcRenderer.callMain(channel, data),
+    callMain,
     on,
     send: (channel: string, data?: any) => ipcRenderer.send(channel, data)
   },
@@ -121,6 +193,9 @@ contextBridge.exposeInMainWorld('kap', {
     shouldUseDarkColors: () => ipcRenderer.sendSync('kap:system:should-use-dark-colors-sync')
   },
   track: (event: string) => invoke('kap:analytics:track', event),
+  updater: {
+    check: () => invoke('kap:updater:check')
+  },
   window: {
     close: () => invoke('kap:window:close'),
     getCapabilities: () => invoke('kap:window:get-capabilities'),

@@ -9,6 +9,7 @@ import {notify} from './utils/notifications';
 import PCancelable from 'p-cancelable';
 import prettyBytes from 'pretty-bytes';
 import TypedEventEmitter from 'typed-emitter';
+import {renderTimeline} from './converters/timeline';
 
 const plist = require('plist');
 
@@ -130,19 +131,46 @@ export default class Conversion extends (EventEmitter as new () => TypedEventEmi
   };
 
   private readonly start = () => {
-    this.conversionProcess = convertTo(
-      this.format,
-      {
-        ...this.options,
-        defaultFileName: this.video.title,
-        inputPath: this.video.filePath,
-        onProgress: this.onConversionProgress,
-        onCancel: () => {
-          this.emit('cancel');
+    this.conversionProcess = PCancelable.fn(async (onCancel: PCancelable.OnCancelFunction) => {
+      const {startTime: initialStartTime, endTime: initialEndTime} = this.options;
+      let inputPath = this.video.filePath;
+      let startTime = initialStartTime;
+      let endTime = initialEndTime;
+
+      if (this.options.clips?.length) {
+        const timelineProcess = renderTimeline({
+          inputPath,
+          clips: this.options.clips,
+          hasAudio: Boolean(this.options.hasAudio && !this.options.shouldMute),
+          onProgress: (progress, estimate) => this.onConversionProgress('Applying edits', progress, estimate)
+        });
+        onCancel(() => timelineProcess.cancel());
+        inputPath = await timelineProcess;
+        startTime = 0;
+        endTime = 0;
+        for (const clip of this.options.clips) {
+          endTime += clip.freezeDuration ?? ((clip.endTime - clip.startTime) / clip.speed);
         }
-      },
-      this.video.encoding
-    );
+      }
+
+      const conversionProcess = convertTo(
+        this.format,
+        {
+          ...this.options,
+          inputPath,
+          startTime,
+          endTime,
+          defaultFileName: this.video.title,
+          onProgress: this.onConversionProgress,
+          onCancel: () => {
+            this.emit('cancel');
+          }
+        },
+        this.video.encoding
+      );
+      onCancel(() => conversionProcess.cancel());
+      return conversionProcess;
+    })();
   };
 }
 

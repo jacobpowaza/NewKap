@@ -17,11 +17,22 @@ const useVideoControls = () => {
         await transitioningPauseState.current;
         setIsPaused(false);
       } catch {}
+    } else if (videoRef.current) {
+      setIsPaused(false);
     }
   };
 
   const pause = async () => {
-    if (videoRef.current && !videoRef.current.paused) {
+    if (!videoRef.current) {
+      return;
+    }
+
+    if (videoRef.current.paused) {
+      setIsPaused(true);
+      return;
+    }
+
+    if (!videoRef.current.paused) {
       try {
         await transitioningPauseState.current;
       } catch {} finally {
@@ -29,6 +40,22 @@ const useVideoControls = () => {
         setIsPaused(true);
       }
     }
+  };
+
+  const holdFrame = () => {
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+  };
+
+  const resumeAfterHold = async () => {
+    if (videoRef.current?.paused) {
+      try {
+        await videoRef.current.play();
+      } catch {}
+    }
+
+    setIsPaused(false);
   };
 
   const mute = () => {
@@ -68,7 +95,7 @@ const useVideoControls = () => {
       }
     },
     onEnded: () => {
-      play();
+      setIsPaused(true);
     }
   };
 
@@ -101,6 +128,8 @@ const useVideoControls = () => {
     setVideoRef,
     pause,
     play,
+    holdFrame,
+    resumeAfterHold,
     mute,
     unmute,
     videoProps

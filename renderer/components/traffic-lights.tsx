@@ -5,6 +5,12 @@ interface TrafficLightsProps {
   shouldClose?: () => PromiseLike<boolean>;
 }
 
+const normalizeCapabilities = capabilities => ({
+  close: capabilities.close ?? capabilities.closable ?? true,
+  minimize: capabilities.minimize ?? capabilities.minimizable ?? true,
+  maximize: capabilities.maximize ?? capabilities.maximizable ?? true
+});
+
 const TrafficLights: FunctionComponent<TrafficLightsProps> = props => {
   const [tint, setTint] = useState('blue');
   const [enabled, setEnabled] = useState({
@@ -15,7 +21,7 @@ const TrafficLights: FunctionComponent<TrafficLightsProps> = props => {
 
   useEffect(() => {
     const updateCapabilities = async () => {
-      setEnabled(await kap.window.getCapabilities());
+      setEnabled(normalizeCapabilities(await kap.window.getCapabilities()));
     };
 
     const setTintColor = () => {

@@ -2,6 +2,8 @@ import React from 'react';
 import {Provider} from 'unstated';
 import classNames from 'classnames';
 import answerMain from '../utils/answer-main';
+import {ipcRenderer} from '../utils/ipc';
+import kap from '../utils/kap';
 
 import PreferencesNavigation from '../components/preferences/navigation';
 import WindowHeader from '../components/window-header';
@@ -14,10 +16,13 @@ const preferencesContainer = new PreferencesContainer();
 export default class PreferencesPage extends React.Component {
   state = {overlay: false};
 
-  componentDidMount() {
+  async componentDidMount() {
     answerMain('open-plugin-config', preferencesContainer.openPluginsConfig);
     answerMain('options', preferencesContainer.setNavigation);
-    answerMain('mount', async () => preferencesContainer.mount(this.setOverlay));
+    kap.ipc.send('preferences-renderer-ready');
+    await preferencesContainer.mount(this.setOverlay);
+    kap.ipc.send('preferences-mounted');
+    await ipcRenderer.callMain('kap-window-mount');
   }
 
   setOverlay = overlay => {

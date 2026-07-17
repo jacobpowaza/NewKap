@@ -18,6 +18,7 @@ const openExportsWindow = async () => {
       frame: false,
       transparent: true,
       vibrancy: 'window',
+      dock: true,
       route: 'exports'
     });
 

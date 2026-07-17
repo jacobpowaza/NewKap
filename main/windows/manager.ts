@@ -45,6 +45,7 @@ export class WindowManager {
   dialog?: DialogManager;
   exports?: ExportsManager;
   preferences?: PreferencesManager;
+  screenshot?: ScreenshotManager;
 
   setEditor = (editorManager: EditorManager) => {
     this.editor = editorManager;
@@ -69,6 +70,10 @@ export class WindowManager {
   setPreferences = (preferencesManager: PreferencesManager) => {
     this.preferences = preferencesManager;
   };
+}
+
+export interface ScreenshotManager {
+  open: (filePath: string) => Promise<void>;
 }
 
 export const windowManager = new WindowManager();
